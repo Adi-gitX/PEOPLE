@@ -2,10 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-  }
+@font-face {
+  font-family: 'Stack Sans Notch';
+  src: url('/fonts/stack-sans-notch/StackSansNotch-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
 }
 
-/* Custom Font Face if provided later, for now we rely on the stack */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono/JetBrainsMono-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  html {
+    font-family: "Stack Sans Notch", -apple-system, system-ui, "Segoe UI", sans-serif;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Stack Sans Notch", -apple-system, system-ui, "Segoe UI", sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Stack Sans Notch", -apple-system, system-ui, "Segoe UI", sans-serif;
+    font-weight: 600;
+  }
+}
