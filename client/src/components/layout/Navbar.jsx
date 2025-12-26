@@ -10,10 +10,9 @@ export function Navbar() {
                 </Link>
 
                 <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-muted-foreground/80 ml-auto mr-8">
-                    <Link to="/marketplace" className="hover:text-white transition-colors">Marketplace</Link>
+                    <Link to="/explore" className="hover:text-white transition-colors">Missions</Link>
+                    <Link to="/network" className="hover:text-white transition-colors">Network</Link>
                     <Link to="/integrations" className="hover:text-white transition-colors">Integrations</Link>
-                    <Link to="/developers" className="hover:text-white transition-colors">Developers</Link>
-                    <Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link>
                 </div>
 
                 <div className="flex items-center space-x-4">

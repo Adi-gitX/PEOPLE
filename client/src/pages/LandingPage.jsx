@@ -15,29 +15,29 @@ export default function LandingPage() {
 
                     {/* Left: Text Content */}
                     <div className="space-y-8">
-                        <div className="text-white font-mono text-4xl mb-4 text-white/90">
-                            {'>_'}
+                        <div className="text-white font-mono text-4xl mb-4 text-white/90 font-display">
+                            Missions
                         </div>
                         <h1 className="text-7xl md:text-9xl font-bold tracking-tighter leading-[0.85] text-white">
-                            Build & Earn
+                            Not Gigs.
                         </h1>
                         <div className="space-y-6 max-w-xl text-lg text-muted-foreground leading-relaxed">
                             <p>
-                                Publish workflow automations to our marketplace. Set your own prices and keep 100% of upfront fees. We handle trials, billing, and infrastructure.
+                                The collaboration platform where top students solve real problems for ambitious initiators.
                             </p>
                             <p>
-                                Every workflow includes 20 free trial executions. After trials, customers pay usage fees (5¢–25¢ per run) to the platform. You focus on building great workflows.
+                                No bidding. No profiles. Just guaranteed outcomes through curated teams.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-4 pt-4">
-                            <Link to="/signup">
+                            <Link to="/signup?mode=initiator">
                                 <Button className="bg-white text-black hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-none">
-                                    Join the Waitlist
+                                    Start a Mission
                                 </Button>
                             </Link>
-                            <Link to="/missions">
+                            <Link to="/signup?mode=contributor">
                                 <Button variant="outline" className="h-12 px-8 text-base font-semibold border-white/20 hover:bg-white/5 rounded-none text-white">
-                                    See Live Workflows
+                                    Join the Network
                                 </Button>
                             </Link>
                         </div>
@@ -45,25 +45,46 @@ export default function LandingPage() {
 
                     {/* Right: Terminal Visual */}
                     <div className="relative">
-                        <div className="rounded-sm border border-white/10 bg-black w-full max-w-xl ml-auto">
+                        <div className="rounded-sm border border-white/10 bg-black w-full max-w-xl ml-auto shadow-2xl shadow-blue-900/10">
                             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
                                 <div className="flex gap-2">
                                     <div className="w-3 h-3 rounded-full bg-[#FF5F56]"></div>
                                     <div className="w-3 h-3 rounded-full bg-[#FFBD2E]"></div>
                                     <div className="w-3 h-3 rounded-full bg-[#27C93F]"></div>
                                 </div>
-                                <div className="ml-4 text-xs font-mono text-muted-foreground">terminal</div>
+                                <div className="ml-4 text-xs font-mono text-muted-foreground">people_OS</div>
                             </div>
                             <div className="p-6 font-mono text-sm leading-relaxed text-[#eee]">
-                                <div className="flex gap-2">
-                                    <span className="text-white">$</span>
-                                    <span>people mission init</span>
+                                <div className="flex gap-2 mb-2">
+                                    <span className="text-blue-400">➜</span>
+                                    <span>mission init --type=MVP --budget=escrow</span>
                                 </div>
-                                <div className="text-muted-foreground">{'>'} Mission name: AI Email Summarizer</div>
-                                <div className="text-muted-foreground">{'>'} Price: $29 (one-time)</div>
-                                <div className="text-muted-foreground">{'>'} Complexity tier: Heavy (25¢/run)</div>
-                                <div className="text-green-500">✓ Published to marketplace!</div>
-                                <div className="animate-pulse inline-block w-2 H-4 bg-white/50 ml-1">_</div>
+                                <div className="text-muted-foreground/60 mb-1">{'>'} Analyzing mission scope...</div>
+                                <div className="text-muted-foreground/60 mb-1">{'>'} Matching skills: React, Node.js, Systems Design</div>
+                                <div className="text-muted-foreground/60 mb-4">{'>'} Accessing curated network...</div>
+
+                                <div className="space-y-1">
+                                    <div className="flex justify-between">
+                                        <span>Lead Contributor:</span>
+                                        <span className="text-green-400">Assigned [Top 1%]</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Shadow Contributor:</span>
+                                        <span className="text-green-400">Assigned</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Core Reviewer:</span>
+                                        <span className="text-green-400">Active</span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 pt-4 border-t border-white/10">
+                                    <div className="flex gap-2">
+                                        <span className="text-white">Outcome:</span>
+                                        <span className="text-blue-400">Guaranteed</span>
+                                    </div>
+                                </div>
+                                <div className="animate-pulse inline-block w-2 H-4 bg-white/50 mt-1">_</div>
                             </div>
                         </div>
                     </div>
@@ -78,30 +99,30 @@ export default function LandingPage() {
                         {/* Row 1 */}
                         <div className="p-10 rounded-sm border border-white/10 bg-black hover:border-white/20 transition-colors h-full flex flex-col justify-between group">
                             <div>
-                                <div className="text-white font-mono mb-4">{'>_'}</div>
-                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">people CLI</h3>
+                                <div className="text-white font-mono mb-4 text-2xl">01</div>
+                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Curated Network</h3>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    Publish workflows directly from your terminal with interactive prompts for pricing and configuration.
+                                    Access the top 1% of student builders. Admission requires passing reasoning-focused proof tasks, not just resume screening.
                                 </p>
                             </div>
                         </div>
 
                         <div className="p-10 rounded-sm border border-white/10 bg-black hover:border-white/20 transition-colors h-full flex flex-col justify-between group">
                             <div>
-                                <div className="text-white font-mono mb-4">{'</>'}</div>
-                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">TypeScript SDK</h3>
+                                <div className="text-white font-mono mb-4 text-2xl">02</div>
+                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Mission Model</h3>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    Full TypeScript support with autocomplete, type safety, and built-in validation.
+                                    Work begins with a problem, not a person. Initiators submit Missions; we assemble the perfect team to execute.
                                 </p>
                             </div>
                         </div>
 
                         <div className="p-10 rounded-sm border border-white/10 bg-black hover:border-white/20 transition-colors h-full flex flex-col justify-between group">
                             <div>
-                                <div className="text-white font-mono mb-4">⚡</div>
-                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Local Testing</h3>
+                                <div className="text-white font-mono mb-4 text-2xl">03</div>
+                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Zero Failure</h3>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    Test workflows locally with mock data before publishing to the marketplace.
+                                    Every Mission adds a Shadow Contributor and Core Reviewer to ensure delivery. If a lead fails, the shadow steps in instantly.
                                 </p>
                             </div>
                         </div>
@@ -109,30 +130,30 @@ export default function LandingPage() {
                         {/* Row 2 */}
                         <div className="p-10 rounded-sm border border-white/10 bg-black hover:border-white/20 transition-colors h-full flex flex-col justify-between group">
                             <div>
-                                <div className="text-white font-mono mb-4">📈</div>
-                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Analytics Dashboard</h3>
+                                <div className="text-white font-mono mb-4 text-2xl">04</div>
+                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">No Bidding</h3>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    Track installations, executions, revenue, and customer feedback in real-time.
+                                    Remove price racing. Contributors are matched based on fit, not whoever is cheapest. Focus on quality execution.
                                 </p>
                             </div>
                         </div>
 
                         <div className="p-10 rounded-sm border border-white/10 bg-black hover:border-white/20 transition-colors h-full flex flex-col justify-between group">
                             <div>
-                                <div className="text-white font-mono mb-4">{'</>'}</div>
-                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Integration Registry</h3>
+                                <div className="text-white font-mono mb-4 text-2xl">05</div>
+                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Escrow Payments</h3>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    Access 15+ pre-built integrations (Notion, Slack, Zoom, Stripe, GitHub, and more) for your workflows.
+                                    Funds are held securely and released on milestone completion. Contributors get paid; Initiators get outcomes.
                                 </p>
                             </div>
                         </div>
 
                         <div className="p-10 rounded-sm border border-white/10 bg-black hover:border-white/20 transition-colors h-full flex flex-col justify-between group">
                             <div>
-                                <div className="text-white font-mono mb-4">{'>_'}</div>
-                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Hot Reload</h3>
+                                <div className="text-white font-mono mb-4 text-2xl">06</div>
+                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Meritocracy</h3>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    Instant updates during development with automatic reloading of workflow changes.
+                                    No public profiles or popularity contests. Reputation is earned through internal work graphs and peer reviews.
                                 </p>
                             </div>
                         </div>
