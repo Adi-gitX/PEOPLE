@@ -30,7 +30,7 @@ export function SignupForm() {
                     <input
                         required
                         type="text"
-                        placeholder="Adithya"
+                        placeholder="John Doe"
                         className="flex h-10 w-full rounded-md border border-white/10 bg-black pl-10 pr-3 py-2 text-sm text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all hover:border-white/20"
                     />
                 </div>
@@ -43,7 +43,7 @@ export function SignupForm() {
                     <input
                         required
                         type="email"
-                        placeholder="adithyakamatti.workspace@gmail.com"
+                        placeholder="name@example.com"
                         className="flex h-10 w-full rounded-md border border-white/10 bg-black pl-10 pr-3 py-2 text-sm text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all hover:border-white/20"
                     />
                 </div>

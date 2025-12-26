@@ -4,12 +4,12 @@ import { Button } from '../ui/Button';
 export function Navbar() {
     return (
         <nav className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/5">
-            <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-                <Link to="/" className="text-xl font-bold tracking-tighter hover:opacity-80 transition-opacity">
+            <div className="max-w-7xl mx-auto px-6 h-16 flex items-center">
+                <Link to="/" className="text-xl font-bold tracking-tighter hover:opacity-80 transition-opacity font-display">
                     people
                 </Link>
 
-                <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-muted-foreground/80">
+                <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-muted-foreground/80 ml-auto mr-8">
                     <Link to="/marketplace" className="hover:text-white transition-colors">Marketplace</Link>
                     <Link to="/integrations" className="hover:text-white transition-colors">Integrations</Link>
                     <Link to="/developers" className="hover:text-white transition-colors">Developers</Link>
