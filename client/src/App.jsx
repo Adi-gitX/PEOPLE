@@ -11,6 +11,8 @@ import ContributorApplication from './pages/applications/ContributorApplication'
 import MissionExplorePage from './pages/missions/MissionExplorePage';
 import MissionDetailsPage from './pages/missions/MissionDetailsPage';
 import IntegrationsPage from './pages/IntegrationsPage';
+import ContactPage from './pages/ContactPage';
+import NetworkPage from './pages/NetworkPage';
 
 function App() {
   return (
@@ -21,8 +23,9 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/explore" element={<MissionExplorePage />} />
           <Route path="/missions/:id" element={<MissionDetailsPage />} />
-          <Route path="/network" element={<div>Network (Coming Soon)</div>} /> {/* Placeholder */}
+          <Route path="/network" element={<NetworkPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
+          <Route path="/contact" element={<ContactPage />} />
 
           {/* Auth */}
           <Route path="/login" element={<AuthPage />} />

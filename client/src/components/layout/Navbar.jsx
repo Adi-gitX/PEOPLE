@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
+import { NotificationCenter } from '../notifications/NotificationCenter';
 
 export function Navbar() {
     return (
@@ -15,7 +16,8 @@ export function Navbar() {
                     <Link to="/integrations" className="hover:text-white transition-colors">Integrations</Link>
                 </div>
 
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-6">
+                    <NotificationCenter />
                     <Link to="/signup">
                         <Button size="sm" className="bg-white text-black hover:bg-white/90 font-semibold px-5 rounded-none h-9">
                             Sign Up

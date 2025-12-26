@@ -41,7 +41,14 @@ export default function MissionDetailsPage() {
                         <div className="p-6 bg-white/5 border border-white/10 rounded-xl min-w-[280px]">
                             <div className="text-sm text-muted-foreground mb-1">Total Bounty</div>
                             <div className="text-3xl font-bold text-green-400 mb-4">$2,500</div>
-                            <Button className="w-full h-10 bg-white text-black hover:bg-white/90">Apply for Role</Button>
+                            <div className="space-y-2">
+                                <Button disabled className="w-full h-10 bg-white/20 text-white cursor-not-allowed border border-white/10">
+                                    Apply (Auto-Matching Only)
+                                </Button>
+                                <p className="text-xs text-center text-muted-foreground">
+                                    Set your status to "Looking for Work" in your dashboard to be matched.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -84,7 +84,7 @@ export default function MissionExplorePage() {
                     <div>
                         <h1 className="text-4xl font-bold tracking-tighter mb-4">Explore Missions</h1>
                         <p className="text-muted-foreground text-lg max-w-2xl">
-                            Join high-impact teams. Solve real problems. Earn trust and reputation.
+                            Browse active missions. Our algorithm matches you automatically based on your profile strength.
                         </p>
                     </div>
                     <div className="flex items-center gap-4 w-full md:w-auto">
