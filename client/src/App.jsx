@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 
@@ -32,6 +32,7 @@ function App() {
           <Route path="/signup" element={<AuthPage />} />
 
           {/* Dashboard */}
+          <Route path="/dashboard" element={<Navigate to="/dashboard/contributor" replace />} />
           <Route path="/dashboard/initiator" element={<InitiatorDashboard />} />
           <Route path="/dashboard/contributor" element={<ContributorDashboard />} />
           <Route path="/dashboard/missions/:id" element={<div>Mission Details (Coming Soon)</div>} /> {/* Placeholder */}

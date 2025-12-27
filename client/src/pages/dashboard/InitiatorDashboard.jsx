@@ -47,41 +47,47 @@ export default function InitiatorDashboard() {
 
             {/* Stats Overview */}
             <div className="grid md:grid-cols-3 gap-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="p-8 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent backdrop-blur-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-24 bg-green-500/5 blur-[80px] rounded-full pointer-events-none group-hover:bg-green-500/10 transition-colors duration-500" />
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                        <div className="text-sm text-muted-foreground font-medium">Total Escrowed</div>
-                        <Wallet className="w-5 h-5 text-green-400" />
+                <div className="p-8 rounded-xl border border-white/[0.08] bg-[#0A0A0A] relative overflow-hidden group hover:border-white/20 transition-colors">
+                    <div className="flex justify-between items-start mb-6 relative z-10">
+                        <div className="text-sm text-neutral-400 font-medium font-mono uppercase tracking-wider">Total Escrowed</div>
+                        <Wallet className="w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
                     </div>
-                    <div className="text-4xl font-bold text-white tracking-tighter mb-1 relative z-10">$3,700</div>
-                    <div className="text-xs text-green-400 font-mono relative z-10">+12% vs last month</div>
+                    <div className="text-4xl font-bold text-white tracking-tighter mb-2 relative z-10">$3,700</div>
+                    <div className="text-xs text-green-400 font-mono relative z-10 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        +12% vs last month
+                    </div>
                 </div>
 
-                <div className="p-8 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent backdrop-blur-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-24 bg-blue-500/5 blur-[80px] rounded-full pointer-events-none group-hover:bg-blue-500/10 transition-colors duration-500" />
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                        <div className="text-sm text-muted-foreground font-medium">Active Contributors</div>
-                        <Users className="w-5 h-5 text-blue-400" />
+                <div className="p-8 rounded-xl border border-white/[0.08] bg-[#0A0A0A] relative overflow-hidden group hover:border-white/20 transition-colors">
+                    <div className="flex justify-between items-start mb-6 relative z-10">
+                        <div className="text-sm text-neutral-400 font-medium font-mono uppercase tracking-wider">Active Contributors</div>
+                        <Users className="w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
                     </div>
-                    <div className="text-4xl font-bold text-white tracking-tighter mb-1 relative z-10">1</div>
-                    <div className="text-xs text-blue-400 font-mono relative z-10">2 Pending Review</div>
+                    <div className="text-4xl font-bold text-white tracking-tighter mb-2 relative z-10">1</div>
+                    <div className="text-xs text-blue-400 font-mono relative z-10 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        2 Pending Review
+                    </div>
                 </div>
 
-                <div className="p-8 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent backdrop-blur-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-24 bg-orange-500/5 blur-[80px] rounded-full pointer-events-none group-hover:bg-orange-500/10 transition-colors duration-500" />
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                        <div className="text-sm text-muted-foreground font-medium">Action Items</div>
-                        <Target className="w-5 h-5 text-orange-400" />
+                <div className="p-8 rounded-xl border border-white/[0.08] bg-[#0A0A0A] relative overflow-hidden group hover:border-white/20 transition-colors">
+                    <div className="flex justify-between items-start mb-6 relative z-10">
+                        <div className="text-sm text-neutral-400 font-medium font-mono uppercase tracking-wider">Action Items</div>
+                        <Target className="w-5 h-5 text-neutral-500 group-hover:text-white transition-colors" />
                     </div>
-                    <div className="text-4xl font-bold text-white tracking-tighter mb-1 relative z-10">3</div>
-                    <div className="text-xs text-orange-400 font-mono relative z-10">Urgent Attention Req</div>
+                    <div className="text-4xl font-bold text-white tracking-tighter mb-2 relative z-10">3</div>
+                    <div className="text-xs text-orange-400 font-mono relative z-10 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                        Urgent Attention Req
+                    </div>
                 </div>
             </div>
 
             {/* Missions List */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-                    <h3 className="font-bold tracking-tight text-lg">Active Missions</h3>
+            <div className="rounded-xl border border-white/[0.08] bg-[#0A0A0A] overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="p-6 border-b border-white/[0.08] flex items-center justify-between bg-black/20">
+                    <h3 className="font-bold tracking-tight text-white text-lg">Active Missions</h3>
                 </div>
                 <div className="divide-y divide-white/5">
                     {ACTIVE_MISSIONS.map((mission) => (

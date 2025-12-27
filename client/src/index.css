@@ -24,7 +24,7 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-black text-white antialiased;
     font-family: "Stack Sans Notch", -apple-system, system-ui, "Segoe UI", sans-serif;
   }
 
