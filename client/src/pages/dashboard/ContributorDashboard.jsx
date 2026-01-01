@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Button } from '../../components/ui/Button';
 import { Switch } from '../../components/ui/Switch';
-import { CheckCircle2, TrendingUp, Award, Clock, Shield, Search, Loader2, ArrowUpRight, Zap, RefreshCw } from 'lucide-react';
-import { toast, Toaster } from 'sonner';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useCurrentUser } from '../../hooks/useApi';
+import { api } from '../../lib/api';
+import { CheckCircle2, TrendingUp, Award, Clock, Shield, Search, Loader2, ArrowUpRight, Zap, RefreshCw, Link as LinkIcon } from 'lucide-react';
+import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 const MATCHING_TIMELINE = [
     {
@@ -18,7 +22,7 @@ const MATCHING_TIMELINE = [
         stage: "Algorithmic Matching",
         status: "processing",
         time: "Now",
-        detail: "Scanning 142 active missions..."
+        detail: "Scanning active missions..."
     },
     {
         id: 3,
@@ -30,16 +34,61 @@ const MATCHING_TIMELINE = [
 ];
 
 export default function ContributorDashboard() {
+    const { user, profile, refreshProfile } = useAuthStore();
+    const { data: userData, loading } = useCurrentUser();
     const [isLooking, setIsLooking] = useState(false);
-    const [matchPower, setMatchPower] = useState(65);
+    const [updating, setUpdating] = useState(false);
 
-    // Provide immediate feedback on toggle
-    const handleToggle = (checked) => {
+
+    useEffect(() => {
+        if (profile?.isLookingForWork !== undefined) {
+            setIsLooking(profile.isLookingForWork);
+        }
+    }, [profile]);
+
+
+    const calculateMatchPower = () => {
+        let power = 0;
+        if (profile) {
+            if (profile.headline) power += 15;
+            if (profile.bio) power += 15;
+            if (profile.githubUrl) power += 10;
+            if (profile.linkedinUrl) power += 10;
+            if (profile.portfolioUrl) power += 10;
+            if ((profile.skills || []).length > 0) power += 20;
+            if ((profile.skills || []).length >= 3) power += 10;
+            if (profile.isVerified) power += 10;
+        }
+        return Math.min(power, 100);
+    };
+
+    const matchPower = calculateMatchPower();
+
+
+    const handleToggle = async (checked) => {
         setIsLooking(checked);
-        if (checked) {
-            toast.success("Active Status Enabled", {
-                description: "You are now visible to the algorithmic matching engine."
+        setUpdating(true);
+
+        try {
+            await api.patch('/api/v1/contributors/me/availability', {
+                isLookingForWork: checked
             });
+            await refreshProfile();
+
+            if (checked) {
+                toast.success("Active Status Enabled", {
+                    description: "You are now visible to the algorithmic matching engine."
+                });
+            } else {
+                toast.info("Incognito Mode", {
+                    description: "Your profile is now hidden from matching."
+                });
+            }
+        } catch (error) {
+            setIsLooking(!checked);
+            toast.error("Failed to update status");
+        } finally {
+            setUpdating(false);
         }
     };
 
@@ -51,13 +100,14 @@ export default function ContributorDashboard() {
 
     return (
         <DashboardLayout>
-            <Toaster theme="dark" position="bottom-right" />
             <div className="flex flex-col gap-10">
 
-                {/* 1. Header & Main Toggle */}
+
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-2">
                     <div>
-                        <h1 className="text-4xl font-bold tracking-tighter mb-2 text-white">Work Status</h1>
+                        <h1 className="text-4xl font-bold tracking-tighter mb-2 text-white">
+                            Welcome, {user?.displayName?.split(' ')[0] || 'Contributor'}
+                        </h1>
                         <p className="text-neutral-400 text-lg">Input your availability. Let the algorithm do the work.</p>
                     </div>
 
@@ -71,21 +121,39 @@ export default function ContributorDashboard() {
                             <Switch
                                 checked={isLooking}
                                 onCheckedChange={handleToggle}
+                                disabled={updating}
                                 className="scale-110 data-[state=checked]:bg-green-500"
                             />
                         </div>
                     </div>
                 </div>
 
+
+                {matchPower < 50 && (
+                    <div className="p-4 rounded-lg border border-yellow-500/20 bg-yellow-500/5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                                <Award className="w-5 h-5 text-yellow-500" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-white">Complete your profile to boost visibility</p>
+                                <p className="text-xs text-zinc-500">Add skills, links, and bio to increase match power</p>
+                            </div>
+                        </div>
+                        <Link to="/dashboard/settings">
+                            <Button size="sm" variant="outline" className="text-xs">
+                                Complete Profile
+                            </Button>
+                        </Link>
+                    </div>
+                )}
+
                 {isLooking ? (
                     <div className="grid lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {/* 2. Left: Matching Engine Visual */}
                         <div className="lg:col-span-2 space-y-6">
 
-                            {/* Status Card */}
-                            <div className="p-8 rounded-xl border border-white/[0.08] bg-[#0A0A0A] relative overflow-hidden group">
-                                {/* Removed Blur */}
 
+                            <div className="p-8 rounded-xl border border-white/[0.08] bg-[#0A0A0A] relative overflow-hidden group">
                                 <div className="flex items-center gap-5 mb-10 relative z-10">
                                     <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
                                         <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
@@ -103,11 +171,11 @@ export default function ContributorDashboard() {
                                     </div>
                                 </div>
 
-                                {/* Timeline */}
+
                                 <div className="space-y-0 relative z-10">
                                     {MATCHING_TIMELINE.map((step, idx) => (
                                         <div key={step.id} className="relative flex gap-6 pb-8 last:pb-0 group">
-                                            {/* Connector Line */}
+
                                             {idx !== MATCHING_TIMELINE.length - 1 && (
                                                 <div className="absolute left-[19px] top-8 bottom-0 w-px bg-white/[0.08]" />
                                             )}
@@ -133,8 +201,7 @@ export default function ContributorDashboard() {
                             </div>
                         </div>
 
-                        {/* 3. Right: Match Power & Stats */}
-                        <div className="space-y-6">
+                        <div>
                             <div className="p-6 rounded-xl border border-white/[0.08] bg-[#0A0A0A]">
                                 <div className="flex justify-between items-center mb-6">
                                     <div className="flex items-center gap-3">
@@ -157,26 +224,36 @@ export default function ContributorDashboard() {
                                         <span className="text-neutral-300">Identity Verification</span>
                                         <CheckCircle2 className="w-4 h-4 text-green-500" />
                                     </div>
+                                    <Link to="/dashboard/settings" className="flex items-center justify-between text-sm p-3 rounded-lg bg-black border border-white/[0.08] group hover:border-white/20 transition-colors">
+                                        <span className="text-neutral-300">Complete Profile</span>
+                                        {matchPower >= 50 ? (
+                                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                        ) : (
+                                            <span className="text-xs font-medium text-white px-2 py-1 bg-white/10 rounded">Edit</span>
+                                        )}
+                                    </Link>
                                     <div className="flex items-center justify-between text-sm p-3 rounded-lg bg-black border border-white/[0.08] group hover:border-white/20 transition-colors">
-                                        <span className="text-neutral-300">Background Check</span>
-                                        <button onClick={() => handleAction('Background Check')} className="text-xs font-medium text-white px-2 py-1 bg-white/10 rounded hover:bg-white/20 transition-colors">Start</button>
-                                    </div>
-                                    <div className="flex items-center justify-between text-sm p-3 rounded-lg bg-black border border-white/[0.08] group hover:border-white/20 transition-colors">
-                                        <span className="text-neutral-300">Skills Assessment</span>
-                                        <button onClick={() => handleAction('Skill Assessment')} className="text-xs font-medium text-white px-2 py-1 bg-white/10 rounded hover:bg-white/20 transition-colors">Retake</button>
+                                        <span className="text-neutral-300">Skills ({(profile?.skills || []).length})</span>
+                                        {(profile?.skills || []).length >= 3 ? (
+                                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                        ) : (
+                                            <Link to="/dashboard/settings">
+                                                <span className="text-xs font-medium text-white px-2 py-1 bg-white/10 rounded hover:bg-white/20 transition-colors">Add</span>
+                                            </Link>
+                                        )}
                                     </div>
                                 </div>
                             </div>
 
                             <div className="p-6 rounded-xl border border-white/[0.08] bg-[#0A0A0A] flex items-center justify-between">
                                 <div>
-                                    <div className="text-neutral-400 text-xs font-mono uppercase tracking-wider mb-1">Active Missions</div>
-                                    <div className="text-2xl font-bold text-white tracking-tight">142</div>
+                                    <div className="text-neutral-400 text-xs font-mono uppercase tracking-wider mb-1">Your Skills</div>
+                                    <div className="text-2xl font-bold text-white tracking-tight">{(profile?.skills || []).length}</div>
                                 </div>
                                 <div className="h-10 w-px bg-white/[0.08]" />
                                 <div>
-                                    <div className="text-neutral-400 text-xs font-mono uppercase tracking-wider mb-1">Avg Ticket</div>
-                                    <div className="text-2xl font-bold text-white tracking-tight">$1.2k</div>
+                                    <div className="text-neutral-400 text-xs font-mono uppercase tracking-wider mb-1">Hrs/Week</div>
+                                    <div className="text-2xl font-bold text-white tracking-tight">{profile?.availabilityHoursPerWeek || 0}</div>
                                 </div>
                             </div>
                         </div>
@@ -194,6 +271,7 @@ export default function ContributorDashboard() {
                             size="lg"
                             className="bg-white text-black hover:bg-neutral-200 h-12 px-8 text-base font-semibold transition-all"
                             onClick={() => handleToggle(true)}
+                            isLoading={updating}
                         >
                             Start Looking for Work
                         </Button>
