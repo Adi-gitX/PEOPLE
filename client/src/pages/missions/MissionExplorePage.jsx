@@ -1,85 +1,99 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
 import { Button } from '../../components/ui/Button';
-import { Search, Filter, Cpu, Database, Layout, Shield, CheckCircle2 } from 'lucide-react';
+import { useMissions } from '../../hooks/useApi';
+import { Search, Filter, Cpu, Database, Layout, Shield, CheckCircle2, Loader2, X, Smartphone, Palette, Cloud, Code } from 'lucide-react';
 
-const MISSIONS = [
+
+
+// Mock fallback for when API has no data
+const MOCK_MISSIONS = [
     {
-        id: 1,
+        id: 'mock-1',
         title: "AI Meeting Intelligence",
-        initiator: "TechFlow Corp",
-        bounty: "$2,500",
-        type: "Algorithm",
-        complexity: "Hard",
-        tags: ["Python", "OpenAI", "Vector DB"],
+        initiatorName: "TechFlow Corp",
+        budgetMax: 2500,
+        type: "backend",
+        complexity: "hard",
+        requiredSkills: ["Python", "OpenAI", "Vector DB"],
         description: "Build a system to automatically extract action items and sentiment from Zoom transcripts.",
-        slots: { total: 3, filled: 1 }
     },
     {
-        id: 2,
+        id: 'mock-2',
         title: "DeFi Dashboard UI",
-        initiator: "FinSafe DAO",
-        bounty: "$4,000",
-        type: "Frontend",
-        complexity: "Medium",
-        tags: ["React", "Web3", "Tailwind"],
+        initiatorName: "FinSafe DAO",
+        budgetMax: 4000,
+        type: "frontend",
+        complexity: "medium",
+        requiredSkills: ["React", "Web3", "Tailwind"],
         description: "Create a high-performance, real-time dashboard for tracking liquidity pool metrics.",
-        slots: { total: 3, filled: 0 }
     },
-    {
-        id: 3,
-        title: "Legacy SQL Migration",
-        initiator: "RetailGiant",
-        bounty: "$8,000",
-        type: "Backend",
-        complexity: "Expert",
-        tags: ["PostgreSQL", "Node.js", "Data"],
-        description: "Migrate 2TB of customer data from Oracle to Postgres with zero downtime.",
-        slots: { total: 5, filled: 2 }
-    },
-    {
-        id: 4,
-        title: "Mobile App Testing Suite",
-        initiator: "Appify",
-        bounty: "$1,200",
-        type: "QA",
-        complexity: "Easy",
-        tags: ["Jest", "Detox", "CI/CD"],
-        description: "Develop a comprehensive E2E testing suite for a React Native e-commerce app.",
-        slots: { total: 2, filled: 0 }
-    },
-    {
-        id: 5,
-        title: "Smart Contract Audit",
-        initiator: "SecureChain",
-        bounty: "$5,000",
-        type: "Security",
-        complexity: "Expert",
-        tags: ["Solidity", "Security", "Audit"],
-        description: "Audit a new staking contract for potential re-entrancy and logic vulnerabilities.",
-        slots: { total: 2, filled: 1 }
-    },
-    {
-        id: 6,
-        title: "Marketing Site Redesign",
-        initiator: "GrowthHacker",
-        bounty: "$3,000",
-        type: "Design",
-        complexity: "Medium",
-        tags: ["Figma", "React", "Animation"],
-        description: "Redesign the complete marketing funnel with Framer Motion animations.",
-        slots: { total: 4, filled: 2 }
-    }
 ];
 
+const TYPE_ICONS = {
+    frontend: Layout,
+    backend: Database,
+    fullstack: Code,
+    mobile: Smartphone,
+    design: Palette,
+    devops: Cloud,
+    data: Cpu,
+    other: Code,
+};
+
+const COMPLEXITY_COLORS = {
+    easy: 'text-green-400 border-green-400/20 bg-green-400/10',
+    medium: 'text-yellow-400 border-yellow-400/20 bg-yellow-400/10',
+    hard: 'text-orange-400 border-orange-400/20 bg-orange-400/10',
+    expert: 'text-red-400 border-red-400/20 bg-red-400/10',
+};
+
 export default function MissionExplorePage() {
+    const [filters, setFilters] = useState({
+        type: '',
+        complexity: '',
+        search: '',
+    });
+    const [showFilters, setShowFilters] = useState(false);
+
+    const { data: apiMissions, loading, error, refetch } = useMissions({
+        type: filters.type || undefined,
+        complexity: filters.complexity || undefined,
+    });
+
+
+    // Use API data if available, fallback to mock
+    const missions = (apiMissions && apiMissions.length > 0) ? apiMissions : MOCK_MISSIONS;
+
+    // Filter by search term locally
+
+
+    const filteredMissions = missions.filter(m =>
+        !filters.search ||
+        m.title.toLowerCase().includes(filters.search.toLowerCase()) ||
+        m.description?.toLowerCase().includes(filters.search.toLowerCase())
+    );
+
+    const handleFilterChange = (key, value) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    const clearFilters = () => {
+        setFilters({ type: '', complexity: '', search: '' });
+    };
+
+    useEffect(() => {
+        refetch();
+    }, [filters.type, filters.complexity]);
+
     return (
         <div className="min-h-screen bg-black text-white">
             <Navbar />
 
             <div className="pt-32 pb-20 px-6 max-w-7xl mx-auto">
-                {/* Header */}
+
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
                     <div>
                         <h1 className="text-4xl font-bold tracking-tighter mb-4">Explore Missions</h1>
@@ -92,71 +106,164 @@ export default function MissionExplorePage() {
                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <input
                                 type="text"
+                                value={filters.search}
+                                onChange={(e) => handleFilterChange('search', e.target.value)}
                                 placeholder="Search missions..."
                                 className="w-full bg-white/5 border border-white/10 rounded-md py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-white/20"
                             />
                         </div>
-                        <Button variant="outline" className="h-10 border-white/10">
+                        <Button
+                            variant="outline"
+                            className="h-10 border-white/10"
+                            onClick={() => setShowFilters(!showFilters)}
+                        >
                             <Filter className="h-4 w-4 mr-2" />
                             Filters
                         </Button>
                     </div>
                 </div>
 
-                {/* Grid */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {MISSIONS.map((mission) => (
-                        <Link key={mission.id} to={`/missions/${mission.id}`} className="group rounded-xl border border-white/10 bg-white/5 p-6 hover:border-white/20 transition-all hover:bg-white/[0.07] cursor-pointer block text-left">
+                {showFilters && (
+                    <div className="mb-8 p-6 rounded-xl border border-white/10 bg-white/[0.02] animate-in slide-in-from-top-2">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-medium">Filters</h3>
+                            <button onClick={clearFilters} className="text-sm text-zinc-500 hover:text-white">
+                                Clear all
+                            </button>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-4">
                             <div>
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="p-2 rounded-lg bg-white/5 border border-white/10 text-white">
-                                        {mission.type === 'Algorithm' && <Cpu className="h-5 w-5" />}
-                                        {mission.type === 'Frontend' && <Layout className="h-5 w-5" />}
-                                        {mission.type === 'Backend' && <Database className="h-5 w-5" />}
-                                        {mission.type === 'QA' && <CheckCircle2 className="h-5 w-5" />}
-                                        {mission.type === 'Security' && <Shield className="h-5 w-5" />}
-                                        {mission.type === 'Design' && <Layout className="h-5 w-5" />}
-                                    </div>
-                                    <span className="text-sm font-mono text-green-400 bg-green-400/10 px-2 py-1 rounded border border-green-400/20">
-                                        {mission.bounty}
-                                    </span>
-                                </div>
+                                <label className="text-sm text-zinc-500 mb-2 block">Type</label>
+                                <select
+                                    value={filters.type}
+                                    onChange={(e) => handleFilterChange('type', e.target.value)}
+                                    className="w-full px-4 py-2 bg-black border border-white/10 rounded-lg text-sm"
+                                >
+                                    <option value="">All Types</option>
+                                    <option value="frontend">Frontend</option>
+                                    <option value="backend">Backend</option>
+                                    <option value="fullstack">Full Stack</option>
+                                    <option value="mobile">Mobile</option>
+                                    <option value="design">Design</option>
+                                    <option value="devops">DevOps</option>
+                                    <option value="data">Data/ML</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-sm text-zinc-500 mb-2 block">Complexity</label>
+                                <select
+                                    value={filters.complexity}
+                                    onChange={(e) => handleFilterChange('complexity', e.target.value)}
+                                    className="w-full px-4 py-2 bg-black border border-white/10 rounded-lg text-sm"
+                                >
+                                    <option value="">All Complexity</option>
+                                    <option value="easy">Easy</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="hard">Hard</option>
+                                    <option value="expert">Expert</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
-                                <h3 className="text-xl font-bold mb-2 group-hover:text-blue-400 transition-colors">{mission.title}</h3>
-                                <div className="text-sm text-muted-foreground mb-4">by {mission.initiator}</div>
 
-                                <p className="text-sm text-gray-400 leading-relaxed mb-6 line-clamp-2">
-                                    {mission.description}
-                                </p>
+                {(filters.type || filters.complexity) && (
+                    <div className="flex flex-wrap gap-2 mb-6">
+                        {filters.type && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-sm border border-blue-500/20">
+                                Type: {filters.type}
+                                <button onClick={() => handleFilterChange('type', '')}>
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </span>
+                        )}
+                        {filters.complexity && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-500/10 text-purple-400 rounded-full text-sm border border-purple-500/20">
+                                Complexity: {filters.complexity}
+                                <button onClick={() => handleFilterChange('complexity', '')}>
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </span>
+                        )}
+                    </div>
+                )}
 
-                                <div className="flex flex-wrap gap-2 mb-6">
-                                    {mission.tags.map(tag => (
-                                        <span key={tag} className="text-xs px-2 py-1 rounded bg-white/5 text-muted-foreground border border-white/5">
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
 
-                                <div className="flex items-center justify-between pt-4 border-t border-white/10 text-xs text-muted-foreground">
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex -space-x-2">
-                                            {[...Array(mission.slots.filled)].map((_, i) => (
-                                                <div key={i} className="w-6 h-6 rounded-full bg-white/20 border border-black" />
-                                            ))}
-                                            {[...Array(mission.slots.total - mission.slots.filled)].map((_, i) => (
-                                                <div key={i} className="w-6 h-6 rounded-full bg-white/5 border border-black border-dashed flex items-center justify-center text-[8px]">+</div>
+                {loading && (
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+                    </div>
+                )}
+
+
+                {!loading && filteredMissions.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                        <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mb-4">
+                            <Search className="w-8 h-8 text-zinc-500" />
+                        </div>
+                        <h3 className="text-xl font-medium mb-2">No missions found</h3>
+                        <p className="text-zinc-500 mb-6">Try adjusting your filters or check back later</p>
+                        <Button onClick={clearFilters}>Clear Filters</Button>
+                    </div>
+                )}
+
+
+                {!loading && filteredMissions.length > 0 && (
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredMissions.map((mission) => {
+                            const TypeIcon = TYPE_ICONS[mission.type] || Code;
+                            const complexityClass = COMPLEXITY_COLORS[mission.complexity] || COMPLEXITY_COLORS.medium;
+
+                            return (
+                                <Link
+                                    key={mission.id}
+                                    to={`/missions/${mission.id}`}
+                                    className="group rounded-xl border border-white/10 bg-white/5 p-6 hover:border-white/20 transition-all hover:bg-white/[0.07] cursor-pointer block text-left"
+                                >
+                                    <div>
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="p-2 rounded-lg bg-white/5 border border-white/10 text-white">
+                                                <TypeIcon className="h-5 w-5" />
+                                            </div>
+                                            <span className="text-sm font-mono text-green-400 bg-green-400/10 px-2 py-1 rounded border border-green-400/20">
+                                                ${mission.budgetMax?.toLocaleString() || mission.budgetMin?.toLocaleString() || '???'}
+                                            </span>
+                                        </div>
+
+                                        <h3 className="text-xl font-bold mb-2 group-hover:text-blue-400 transition-colors">
+                                            {mission.title}
+                                        </h3>
+                                        <div className="text-sm text-muted-foreground mb-4">
+                                            by {mission.initiatorName || 'Anonymous'}
+                                        </div>
+
+                                        <p className="text-sm text-gray-400 leading-relaxed mb-6 line-clamp-2">
+                                            {mission.description || mission.problemStatement}
+                                        </p>
+
+                                        <div className="flex flex-wrap gap-2 mb-6">
+                                            {(mission.requiredSkills || []).slice(0, 3).map(tag => (
+                                                <span key={tag} className="text-xs px-2 py-1 rounded bg-white/5 text-muted-foreground border border-white/5">
+                                                    {typeof tag === 'string' ? tag : tag.name || 'Skill'}
+                                                </span>
                                             ))}
                                         </div>
-                                        <span>{mission.slots.filled}/{mission.slots.total} Spots</span>
+
+                                        <div className="flex items-center justify-between pt-4 border-t border-white/10 text-xs text-muted-foreground">
+                                            <div className="flex items-center gap-2">
+                                                <span className="capitalize">{mission.type}</span>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded border capitalize ${complexityClass}`}>
+                                                {mission.complexity}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded border border-white/10">
-                                        {mission.complexity}
-                                    </span>
-                                </div>
-                            </div>
-                        </Link>
-                    ))}
-                </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
             <Footer />
         </div>
