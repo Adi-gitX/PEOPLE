@@ -9,11 +9,11 @@ export default function LandingPage() {
         <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
             <Navbar />
 
-            {/* Hero Section */}
+
             <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 border-b border-white/5 overflow-hidden">
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
 
-                    {/* Left: Text Content */}
+
                     <div className="space-y-8">
                         <div className="text-white font-mono text-4xl mb-4 text-white/90 font-display">
                             Missions
@@ -43,7 +43,7 @@ export default function LandingPage() {
                         </div>
                     </div>
 
-                    {/* Right: Terminal Visual */}
+
                     <div className="relative">
                         <div className="rounded-sm border border-white/10 bg-black w-full max-w-xl ml-auto shadow-2xl shadow-blue-900/10">
                             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
@@ -92,11 +92,11 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Grid Features */}
+
             <section id="features" className="py-32 px-6 border-b border-white/5 bg-black">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid md:grid-cols-3 gap-8">
-                        {/* Row 1 */}
+
                         <div className="p-10 rounded-sm border border-white/10 bg-black hover:border-white/20 transition-colors h-full flex flex-col justify-between group">
                             <div>
                                 <div className="text-white font-mono mb-4 text-2xl">01</div>
@@ -127,7 +127,7 @@ export default function LandingPage() {
                             </div>
                         </div>
 
-                        {/* Row 2 */}
+
                         <div className="p-10 rounded-sm border border-white/10 bg-black hover:border-white/20 transition-colors h-full flex flex-col justify-between group">
                             <div>
                                 <div className="text-white font-mono mb-4 text-2xl">04</div>
@@ -169,7 +169,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* CTA */}
+
             <section className="py-32 px-6 text-center">
                 <div className="max-w-2xl mx-auto space-y-8">
                     <h2 className="text-4xl md:text-6xl font-bold tracking-tighter">Ready to start?</h2>

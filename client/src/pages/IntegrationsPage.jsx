@@ -75,7 +75,7 @@ export default function IntegrationsPage() {
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {INTEGRATIONS.map((tool) => (
                         <div key={tool.id} className="group relative rounded-2xl border border-white/10 bg-white/[0.02] p-8 hover:border-white/20 transition-all duration-500 overflow-hidden">
-                            {/* Hover Gradient */}
+
                             <div className={`absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none ${tool.bg} blur-3xl`} />
 
                             <div className="relative z-10">
