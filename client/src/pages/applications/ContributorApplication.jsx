@@ -13,15 +13,14 @@ export default function ContributorApplication() {
         if (!answer.trim()) return;
 
         setIsSubmitting(true);
-        // Simulate API verification
-        await new Promise(resolve => setTimeout(resolve, 1500));
+
         navigate('/dashboard');
     };
 
     return (
         <DashboardLayout>
             <div className="max-w-[1400px] mx-auto pt-8">
-                {/* Header */}
+
                 <div className="flex items-center justify-between mb-12">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
@@ -49,7 +48,7 @@ export default function ContributorApplication() {
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-8 h-[calc(100vh-300px)] min-h-[600px]">
-                    {/* Left: Scenario (Read Only) */}
+
                     <div className="rounded-xl border border-white/[0.08] bg-[#0A0A0A] flex flex-col overflow-hidden">
                         <div className="border-b border-white/[0.08] px-6 py-4 flex items-center gap-3 bg-white/[0.02]">
                             <Terminal className="w-4 h-4 text-neutral-500" />
@@ -83,7 +82,7 @@ export default function ContributorApplication() {
                         </div>
                     </div>
 
-                    {/* Right: Input (Interactive) */}
+
                     <div className="rounded-xl border border-white/[0.08] bg-[#0A0A0A] flex flex-col overflow-hidden relative group">
                         <div className="border-b border-white/[0.08] px-6 py-4 flex items-center justify-between bg-white/[0.02]">
                             <div className="flex items-center gap-3">
@@ -98,8 +97,7 @@ export default function ContributorApplication() {
                             value={answer}
                             onChange={(e) => setAnswer(e.target.value)}
                             className="flex-1 w-full bg-[#050505] p-8 text-neutral-300 font-mono text-sm resize-none focus:outline-none focus:ring-1 focus:ring-white/[0.08] leading-relaxed selection:bg-white/20"
-                            placeholder="// Type your architectural analysis here...
-// Focus on Idempotency keys or Database constraints."
+                            placeholder="Type your architectural analysis here..."
                             spellCheck="false"
                         />
 
