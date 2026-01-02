@@ -1,19 +1,38 @@
 import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { signIn, signInWithGoogle } from '../../lib/auth';
-import { Mail, Lock } from 'lucide-react';
+import { signIn, signInWithGoogle, resetPassword } from '../../lib/auth';
+import { Mail, Lock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function LoginForm() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Redirect to where user came from, or dashboard
     const from = location.state?.from?.pathname || '/dashboard';
+
+    const getErrorMessage = (errorCode) => {
+        switch (errorCode) {
+            case 'auth/invalid-credential':
+            case 'auth/wrong-password':
+            case 'auth/user-not-found':
+                return 'Invalid email or password. Please check your credentials.';
+            case 'auth/invalid-email':
+                return 'Please enter a valid email address.';
+            case 'auth/user-disabled':
+                return 'This account has been disabled. Contact support.';
+            case 'auth/too-many-requests':
+                return 'Too many failed attempts. Please try again later or reset your password.';
+            case 'auth/network-request-failed':
+                return 'Network error. Please check your connection.';
+            default:
+                return 'Login failed. Please try again.';
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -25,7 +44,34 @@ export function LoginForm() {
             navigate(from, { replace: true });
         } catch (error) {
             console.error('Login error:', error);
-            toast.error(error.message || 'Failed to sign in');
+            const message = getErrorMessage(error.code);
+            toast.error(message);
+
+            if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+                setShowForgotPassword(true);
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleForgotPassword = async () => {
+        if (!email) {
+            toast.error('Please enter your email first');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await resetPassword(email);
+            toast.success('Password reset email sent! Check your inbox.');
+        } catch (error) {
+            console.error('Reset password error:', error);
+            if (error.code === 'auth/user-not-found') {
+                toast.error('No account found with this email.');
+            } else {
+                toast.error('Failed to send reset email. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -39,7 +85,11 @@ export function LoginForm() {
             navigate(from, { replace: true });
         } catch (error) {
             console.error('Google login error:', error);
-            toast.error(error.message || 'Failed to sign in with Google');
+            if (error.code === 'auth/popup-closed-by-user') {
+                toast.info('Sign-in cancelled');
+            } else {
+                toast.error(error.message || 'Failed to sign in with Google');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -65,7 +115,13 @@ export function LoginForm() {
             <div className="space-y-1">
                 <div className="flex items-center justify-between ml-1">
                     <label className="text-sm font-medium text-muted-foreground">Password</label>
-                    <a href="#" className="text-xs text-muted-foreground hover:text-white transition-colors">Forgot password?</a>
+                    <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className={`text-xs transition-colors ${showForgotPassword ? 'text-white' : 'text-muted-foreground hover:text-white'}`}
+                    >
+                        Forgot password?
+                    </button>
                 </div>
                 <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -80,8 +136,18 @@ export function LoginForm() {
                 </div>
             </div>
 
-            <Button type="submit" className="w-full bg-white text-black hover:bg-white/90 font-semibold h-10 mt-2" isLoading={isLoading}>
-                Log In
+            {showForgotPassword && (
+                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400">
+                    <p>Can't remember your password? Click "Forgot password?" above to reset it.</p>
+                </div>
+            )}
+
+            <Button
+                type="submit"
+                className="w-full bg-white text-black hover:bg-white/90 font-semibold h-10 mt-2"
+                disabled={isLoading}
+            >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Log In'}
             </Button>
 
             <div className="relative my-4">

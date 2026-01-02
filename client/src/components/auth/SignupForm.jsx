@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { signUp, signInWithGoogle } from '../../lib/auth';
-import { User, Mail, Lock, Briefcase, Code } from 'lucide-react';
+import { User, Mail, Lock, Briefcase, Code, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function SignupForm() {
@@ -11,7 +11,7 @@ export function SignupForm() {
         email: '',
         password: '',
         confirmPassword: '',
-        role: 'contributor', // 'contributor' or 'initiator'
+        role: 'contributor',
     });
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
@@ -20,16 +20,31 @@ export function SignupForm() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const getErrorMessage = (errorCode) => {
+        switch (errorCode) {
+            case 'auth/email-already-in-use':
+                return 'This email is already registered. Try logging in instead.';
+            case 'auth/invalid-email':
+                return 'Please enter a valid email address.';
+            case 'auth/operation-not-allowed':
+                return 'Email/password signup is not enabled. Contact support.';
+            case 'auth/weak-password':
+                return 'Password is too weak. Use at least 6 characters.';
+            case 'auth/network-request-failed':
+                return 'Network error. Please check your connection.';
+            default:
+                return 'Signup failed. Please try again.';
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validate passwords match
         if (formData.password !== formData.confirmPassword) {
             toast.error('Passwords do not match');
             return;
         }
 
-        // Validate password length
         if (formData.password.length < 6) {
             toast.error('Password must be at least 6 characters');
             return;
@@ -48,7 +63,8 @@ export function SignupForm() {
             navigate(`/dashboard/${formData.role}`);
         } catch (error) {
             console.error('Signup error:', error);
-            toast.error(error.message || 'Failed to create account');
+            const message = getErrorMessage(error.code);
+            toast.error(message);
         } finally {
             setIsLoading(false);
         }
@@ -62,7 +78,13 @@ export function SignupForm() {
             navigate(`/dashboard/${formData.role}`);
         } catch (error) {
             console.error('Google signup error:', error);
-            toast.error(error.message || 'Failed to sign up with Google');
+            if (error.code === 'auth/popup-closed-by-user') {
+                toast.info('Sign-up cancelled');
+            } else if (error.code === 'auth/popup-blocked') {
+                toast.error('Pop-up blocked. Please allow pop-ups for this site.');
+            } else {
+                toast.error(error.message || 'Failed to sign up with Google');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -70,7 +92,6 @@ export function SignupForm() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Role Selection */}
             <div className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground ml-1">I want to...</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -78,8 +99,8 @@ export function SignupForm() {
                         type="button"
                         onClick={() => setFormData({ ...formData, role: 'contributor' })}
                         className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${formData.role === 'contributor'
-                                ? 'border-white bg-white/5'
-                                : 'border-white/10 hover:border-white/30'
+                            ? 'border-white bg-white/5'
+                            : 'border-white/10 hover:border-white/30'
                             }`}
                     >
                         <Code className={`h-5 w-5 ${formData.role === 'contributor' ? 'text-white' : 'text-zinc-500'}`} />
@@ -92,8 +113,8 @@ export function SignupForm() {
                         type="button"
                         onClick={() => setFormData({ ...formData, role: 'initiator' })}
                         className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${formData.role === 'initiator'
-                                ? 'border-white bg-white/5'
-                                : 'border-white/10 hover:border-white/30'
+                            ? 'border-white bg-white/5'
+                            : 'border-white/10 hover:border-white/30'
                             }`}
                     >
                         <Briefcase className={`h-5 w-5 ${formData.role === 'initiator' ? 'text-white' : 'text-zinc-500'}`} />
@@ -171,8 +192,12 @@ export function SignupForm() {
                 </div>
             </div>
 
-            <Button type="submit" className="w-full bg-white text-black hover:bg-white/90 font-semibold h-10 mt-2" isLoading={isLoading}>
-                Create Account
+            <Button
+                type="submit"
+                className="w-full bg-white text-black hover:bg-white/90 font-semibold h-10 mt-2"
+                disabled={isLoading}
+            >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Account'}
             </Button>
 
             <div className="relative my-4">
@@ -200,7 +225,9 @@ export function SignupForm() {
             </button>
 
             <p className="text-[10px] text-center text-zinc-500 mt-4">
-                By creating an account, you agree to our Terms of Service and Privacy Policy
+                By creating an account, you agree to our{' '}
+                <a href="/terms" className="underline hover:text-white">Terms of Service</a> and{' '}
+                <a href="/privacy" className="underline hover:text-white">Privacy Policy</a>
             </p>
         </form>
     );
