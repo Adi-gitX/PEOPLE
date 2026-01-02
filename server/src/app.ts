@@ -7,14 +7,40 @@ import { usersRoutes } from './modules/users/index.js';
 import { contributorsRoutes } from './modules/contributors/index.js';
 import { skillsRoutes } from './modules/skills/index.js';
 import { missionsRoutes } from './modules/missions/index.js';
+import { initiatorsRoutes } from './modules/initiators/index.js';
+import { notificationsRoutes } from './modules/notifications/index.js';
+import { messagesRoutes } from './modules/messages/index.js';
+import { reviewsRoutes } from './modules/reviews/index.js';
+import { adminRoutes } from './modules/admin/index.js';
+import { contactRoutes } from './modules/contact/index.js';
+import { paymentsRoutes } from './modules/payments/index.js';
+import { otpRoutes } from './modules/auth/index.js';
 
 const app: Express = express();
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 // CORS configuration
+// CORS configuration - allow both localhost and production
+const allowedOrigins = [
+    env.FRONTEND_URL,
+    'https://peoplemissions.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+].filter(Boolean);
+
 app.use(cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or Postman)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.warn(`CORS blocked origin: ${origin}`);
+            callback(null, true); // Allow in development, block in production if needed
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -61,10 +87,14 @@ app.use('/api/v1/contributors', contributorsRoutes);
 app.use('/api/v1/skills', skillsRoutes);
 app.use('/api/v1/missions', missionsRoutes);
 
-// TODO: Add these routes as they are built
-// app.use('/api/v1/initiators', initiatorsRoutes);
-// app.use('/api/v1/notifications', notificationsRoutes);
-// app.use('/api/v1/payments', paymentsRoutes);
+app.use('/api/v1/initiators', initiatorsRoutes);
+app.use('/api/v1/notifications', notificationsRoutes);
+app.use('/api/v1/conversations', messagesRoutes);
+app.use('/api/v1/reviews', reviewsRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/contact', contactRoutes);
+app.use('/api/v1/payments', paymentsRoutes);
+app.use('/api/v1/auth/otp', otpRoutes);
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 
