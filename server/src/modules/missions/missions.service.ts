@@ -295,6 +295,24 @@ export const getApplications = async (missionId: string): Promise<MissionApplica
 };
 
 /**
+ * Get single application by ID
+ */
+export const getApplicationById = async (
+    missionId: string,
+    applicationId: string
+): Promise<MissionApplication | null> => {
+    const doc = await db
+        .collection(MISSIONS_COLLECTION)
+        .doc(missionId)
+        .collection('applications')
+        .doc(applicationId)
+        .get();
+
+    if (!doc.exists) return null;
+    return { id: doc.id, ...doc.data() } as MissionApplication;
+};
+
+/**
  * Update application status
  */
 export const updateApplicationStatus = async (

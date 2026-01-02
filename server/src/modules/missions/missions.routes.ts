@@ -128,4 +128,18 @@ router.patch(
     missionsController.updateApplicationStatus
 );
 
+// ─── Assignment & Completion ───
+
+router.post(
+    '/:id/assign',
+    requireAuth,
+    validate(z.object({
+        contributorId: z.string().min(1),
+        role: z.enum(['lead', 'shadow', 'core_reviewer']).default('lead'),
+    })),
+    missionsController.assignContributor
+);
+
+router.post('/:id/complete', requireAuth, missionsController.completeMission);
+
 export default router;

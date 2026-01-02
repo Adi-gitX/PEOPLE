@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as missionsService from './missions.service.js';
+import * as notificationsService from '../notifications/notifications.service.js';
 import { sendSuccess, sendError, sendCreated, sendNoContent } from '../../utils/response.js';
 
 // ─── Mission CRUD ───
@@ -331,9 +332,119 @@ export const updateApplicationStatus = async (req: Request, res: Response): Prom
 
         await missionsService.updateApplicationStatus(id, applicationId, status);
 
+        // Trigger notifications based on status change
+        const application = await missionsService.getApplicationById(id, applicationId);
+        if (application && mission) {
+            if (status === 'accepted') {
+                await notificationsService.notifyApplicationAccepted(
+                    application.contributorId,
+                    mission.title,
+                    id
+                );
+            } else if (status === 'rejected') {
+                await notificationsService.notifyApplicationRejected(
+                    application.contributorId,
+                    mission.title
+                );
+            }
+        }
+
         sendSuccess(res, { message: `Application ${status}` });
     } catch (error) {
         console.error('Update application error:', error);
         sendError(res, 'Failed to update application', 500);
+    }
+};
+
+// ─── Assignment & Completion ───
+
+/**
+ * POST /api/v1/missions/:id/assign
+ * Assign a contributor to mission (after accepting application)
+ */
+export const assignContributor = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const uid = req.user?.uid;
+        const { id } = req.params;
+        const { contributorId, role = 'lead' } = req.body;
+
+        const mission = await missionsService.getMissionById(id);
+        if (!mission) {
+            sendError(res, 'Mission not found', 404);
+            return;
+        }
+        if (mission.initiatorId !== uid) {
+            sendError(res, 'Not authorized', 403);
+            return;
+        }
+        if (!['open', 'matching'].includes(mission.status)) {
+            sendError(res, 'Mission is not in a state to accept assignments', 400);
+            return;
+        }
+
+        const assignment = await missionsService.assignContributor(id, contributorId, role);
+
+        // Update mission status to in_progress if this is the first assignment
+        const allAssignments = await missionsService.getAssignments(id);
+        if (allAssignments.length === 1) {
+            await missionsService.updateMissionStatus(id, 'in_progress');
+        }
+
+        sendCreated(res, {
+            message: 'Contributor assigned successfully',
+            assignment,
+        });
+
+        // Send notification to assigned contributor
+        await notificationsService.notifyApplicationAccepted(
+            contributorId,
+            mission.title,
+            id
+        );
+    } catch (error) {
+        console.error('Assign contributor error:', error);
+        sendError(res, 'Failed to assign contributor', 500);
+    }
+};
+
+/**
+ * POST /api/v1/missions/:id/complete
+ * Mark mission as completed
+ */
+export const completeMission = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const uid = req.user?.uid;
+        const { id } = req.params;
+
+        const mission = await missionsService.getMissionById(id);
+        if (!mission) {
+            sendError(res, 'Mission not found', 404);
+            return;
+        }
+        if (mission.initiatorId !== uid) {
+            sendError(res, 'Not authorized', 403);
+            return;
+        }
+        if (mission.status !== 'in_progress' && mission.status !== 'in_review') {
+            sendError(res, 'Mission cannot be completed in current status', 400);
+            return;
+        }
+
+        await missionsService.updateMissionStatus(id, 'completed');
+
+        // Notify all assigned contributors about completion
+        const assignments = await missionsService.getAssignments(id);
+        for (const assignment of assignments) {
+            await notificationsService.notifyMissionCompleted(
+                assignment.contributorId,
+                mission.title,
+                id
+            );
+        }
+
+        sendSuccess(res, { message: 'Mission marked as completed' });
+    } catch (error) {
+        console.error('Complete mission error:', error);
+        sendError(res, 'Failed to complete mission', 500);
     }
 };
