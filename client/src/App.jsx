@@ -27,6 +27,14 @@ import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import FAQPage from './pages/FAQPage';
 import NotFoundPage from './pages/NotFoundPage';
+import PricingPage from './pages/PricingPage';
+import WorkflowsPage from './pages/WorkflowsPage';
+import DeveloperPlatformPage from './pages/DeveloperPlatformPage';
+import WaitlistPage from './pages/WaitlistPage';
+import HelpCenterPage from './pages/HelpCenterPage';
+import AboutPage from './pages/AboutPage';
+import BlogPage from './pages/BlogPage';
+import CareersPage from './pages/CareersPage';
 import { AdminGuard } from './components/auth/AdminGuard';
 
 function App() {
@@ -44,6 +52,14 @@ function App() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/faq" element={<FAQPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/workflows" element={<WorkflowsPage />} />
+          <Route path="/developers" element={<DeveloperPlatformPage />} />
+          <Route path="/waitlist" element={<WaitlistPage />} />
+          <Route path="/help" element={<HelpCenterPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/careers" element={<CareersPage />} />
 
 
           <Route path="/login" element={

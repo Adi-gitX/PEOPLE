@@ -1,8 +1,7 @@
 // File Upload Service
 // This service handles file uploads to cloud storage
 // In production, integrate with Cloudinary, AWS S3, or Firebase Storage
-
-import { env } from '../config/index.js';
+// Note: env import will be needed when Cloudinary integration is enabled
 
 export type AllowedMimeType = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
 
@@ -104,7 +103,7 @@ export const deleteImage = async (publicId: string): Promise<boolean> => {
 
 export const getOptimizedUrl = (
     url: string,
-    options: { width?: number; height?: number; quality?: number } = {}
+    _options: { width?: number; height?: number; quality?: number } = {}
 ): string => {
     // Production: Transform Cloudinary URL
     // If using Cloudinary, replace URL with transformed version

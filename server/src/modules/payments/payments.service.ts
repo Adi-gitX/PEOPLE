@@ -162,7 +162,7 @@ export const createCheckoutSession = async (
     initiatorId: string,
     amount: number,
     successUrl: string,
-    cancelUrl: string
+    _cancelUrl: string
 ): Promise<{ sessionUrl: string }> => {
     // Production: Use Stripe Checkout
     // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);

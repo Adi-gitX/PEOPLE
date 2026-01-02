@@ -24,7 +24,9 @@ const envSchema = z.object({
     CLOUDINARY_API_KEY: z.string().optional(),
     CLOUDINARY_API_SECRET: z.string().optional(),
 
-    // Email
+    // Email (Gmail SMTP via Nodemailer)
+    GMAIL_USER: z.string().optional(),
+    GMAIL_APP_PASSWORD: z.string().optional(),
     RESEND_API_KEY: z.string().optional(),
 
     // AI
