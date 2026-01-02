@@ -49,6 +49,17 @@ export const signUp = async (email, password, fullName, role = 'contributor') =>
  */
 export const signIn = async (email, password) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+    // Wait for the auth state to fully propagate
+    await new Promise((resolve) => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                unsubscribe();
+                resolve(user);
+            }
+        });
+    });
+
     return userCredential.user;
 };
 
