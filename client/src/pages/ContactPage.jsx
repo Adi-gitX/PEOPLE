@@ -1,16 +1,54 @@
 import { useState } from 'react';
-import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Button } from '../components/ui/Button';
-import { Send, MessageSquare } from 'lucide-react';
+import { Send, MessageSquare, Loader2 } from 'lucide-react';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
+import { api } from '../lib/api';
+import { toast } from 'sonner';
 
 export default function ContactPage() {
     const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [form, setForm] = useState({
+        name: '',
+        email: '',
+        subject: 'Matching Issues',
+        message: '',
+    });
 
-    const handleSubmit = (e) => {
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setForm(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setSubmitted(true);
+
+        if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+            toast.error('Please fill in all required fields');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await api.post('/api/v1/contact', {
+                name: form.name.trim(),
+                email: form.email.trim(),
+                subject: form.subject,
+                message: form.message.trim(),
+            });
+            setSubmitted(true);
+            toast.success('Message sent successfully!');
+        } catch (error) {
+            toast.error(error.message || 'Failed to send message. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const resetForm = () => {
+        setSubmitted(false);
+        setForm({ name: '', email: '', subject: 'Matching Issues', message: '' });
     };
 
     return (
@@ -30,13 +68,46 @@ export default function ContactPage() {
 
                     {!submitted ? (
                         <form onSubmit={handleSubmit} className="relative space-y-6 bg-white/[0.03] backdrop-blur-xl border border-white/10 p-10 rounded-2xl shadow-2xl">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium ml-1">Name *</label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={form.name}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full bg-black/50 border border-white/10 rounded-lg h-12 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-white/20 placeholder:text-muted-foreground/50"
+                                        placeholder="Your name"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium ml-1">Email *</label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={form.email}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full bg-black/50 border border-white/10 rounded-lg h-12 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-white/20 placeholder:text-muted-foreground/50"
+                                        placeholder="you@example.com"
+                                    />
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
                                 <label className="text-sm font-medium ml-1">Topic</label>
                                 <div className="relative">
-                                    <select className="w-full bg-black/50 border border-white/10 rounded-lg h-12 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none text-white">
+                                    <select
+                                        name="subject"
+                                        value={form.subject}
+                                        onChange={handleChange}
+                                        className="w-full bg-black/50 border border-white/10 rounded-lg h-12 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none text-white"
+                                    >
                                         <option>Matching Issues</option>
                                         <option>Profile Verification</option>
                                         <option>Payment Inquiry</option>
+                                        <option>Technical Support</option>
                                         <option>Other</option>
                                     </select>
                                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
@@ -46,8 +117,11 @@ export default function ContactPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium ml-1">Message</label>
+                                <label className="text-sm font-medium ml-1">Message *</label>
                                 <textarea
+                                    name="message"
+                                    value={form.message}
+                                    onChange={handleChange}
                                     required
                                     rows={5}
                                     className="w-full bg-black/50 border border-white/10 rounded-lg p-4 text-sm focus:outline-none focus:ring-1 focus:ring-white/20 placeholder:text-muted-foreground/50 resize-none"
@@ -55,9 +129,22 @@ export default function ContactPage() {
                                 />
                             </div>
 
-                            <Button className="w-full h-12 text-base bg-white text-black hover:bg-white/90">
-                                <Send className="w-4 h-4 mr-2" />
-                                Submit Query
+                            <Button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full h-12 text-base bg-white text-black hover:bg-white/90 disabled:opacity-50"
+                            >
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Sending...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="w-4 h-4 mr-2" />
+                                        Submit Query
+                                    </>
+                                )}
                             </Button>
                         </form>
                     ) : (
@@ -69,7 +156,7 @@ export default function ContactPage() {
                             <p className="text-muted-foreground mb-8 leading-relaxed">
                                 Our support team will review your ticket and respond within 24 hours. Check your email for updates.
                             </p>
-                            <Button variant="outline" onClick={() => setSubmitted(false)} className="border-white/10 hover:bg-white/5">Send another message</Button>
+                            <Button variant="outline" onClick={resetForm} className="border-white/10 hover:bg-white/5">Send another message</Button>
                         </div>
                     )}
                 </div>
