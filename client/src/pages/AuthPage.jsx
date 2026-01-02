@@ -4,13 +4,13 @@ import { LoginForm } from '../components/auth/LoginForm';
 import { SignupForm } from '../components/auth/SignupForm';
 import { EmailOtpForm } from '../components/auth/EmailOtpForm';
 import { Navbar } from '../components/layout/Navbar';
-import { KeyRound, Mail } from 'lucide-react';
+import { KeyRound, Sparkles } from 'lucide-react';
 
 export default function AuthPage() {
     const [searchParams] = useSearchParams();
     const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'login';
     const [mode, setMode] = useState(initialMode);
-    const [authMethod, setAuthMethod] = useState('otp'); // Default to OTP for better UX
+    const [authMethod, setAuthMethod] = useState('magic'); // 'magic' or 'password'
 
     return (
         <div className="min-h-screen bg-black text-white flex flex-col">
@@ -31,20 +31,20 @@ export default function AuthPage() {
                     {/* Auth Method Tabs */}
                     <div className="flex bg-zinc-900 rounded-lg p-1">
                         <button
-                            onClick={() => setAuthMethod('otp')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'otp'
-                                    ? 'bg-white text-black'
-                                    : 'text-zinc-400 hover:text-white'
+                            onClick={() => setAuthMethod('magic')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'magic'
+                                ? 'bg-white text-black'
+                                : 'text-zinc-400 hover:text-white'
                                 }`}
                         >
-                            <Mail className="w-4 h-4" />
-                            Email OTP
+                            <Sparkles className="w-4 h-4" />
+                            Magic Link
                         </button>
                         <button
                             onClick={() => setAuthMethod('password')}
                             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'password'
-                                    ? 'bg-white text-black'
-                                    : 'text-zinc-400 hover:text-white'
+                                ? 'bg-white text-black'
+                                : 'text-zinc-400 hover:text-white'
                                 }`}
                         >
                             <KeyRound className="w-4 h-4" />
@@ -53,7 +53,7 @@ export default function AuthPage() {
                     </div>
 
                     <div>
-                        {authMethod === 'otp' ? (
+                        {authMethod === 'magic' ? (
                             <EmailOtpForm mode={mode} />
                         ) : (
                             mode === 'login' ? <LoginForm /> : <SignupForm />

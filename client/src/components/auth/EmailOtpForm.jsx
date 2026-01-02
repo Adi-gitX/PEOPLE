@@ -1,33 +1,93 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
-import { Mail, ArrowRight, Loader2, User, Briefcase, Code } from 'lucide-react';
+import { Mail, ArrowRight, Loader2, User, Briefcase, Code, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { api } from '../../lib/api';
-import { signInWithCustomToken } from 'firebase/auth';
+import {
+    sendSignInLinkToEmail,
+    isSignInWithEmailLink,
+    signInWithEmailLink
+} from 'firebase/auth';
 import { auth } from '../../lib/firebase';
+import { api } from '../../lib/api';
+
+const ACTION_CODE_SETTINGS = {
+    url: window.location.origin + '/login?emailLink=true',
+    handleCodeInApp: true,
+};
 
 export function EmailOtpForm({ mode = 'login' }) {
     const [email, setEmail] = useState('');
-    const [otp, setOtp] = useState(['', '', '', '', '', '']);
-    const [step, setStep] = useState('email'); // 'email', 'otp', or 'details'
+    const [step, setStep] = useState('email'); // 'email', 'sent', or 'details'
     const [isLoading, setIsLoading] = useState(false);
-    const [countdown, setCountdown] = useState(0);
     const [formData, setFormData] = useState({
         fullName: '',
         role: 'contributor',
     });
     const navigate = useNavigate();
-    const otpRefs = useRef([]);
 
+    // Check if returning from email link
     useEffect(() => {
-        if (countdown > 0) {
-            const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-            return () => clearTimeout(timer);
-        }
-    }, [countdown]);
+        const handleEmailLink = async () => {
+            if (isSignInWithEmailLink(auth, window.location.href)) {
+                setIsLoading(true);
 
-    const handleSendOTP = async (e) => {
+                // Get email from localStorage
+                let storedEmail = window.localStorage.getItem('emailForSignIn');
+
+                if (!storedEmail) {
+                    // If email not found, ask user to enter it
+                    storedEmail = window.prompt('Please enter your email to confirm:');
+                }
+
+                if (!storedEmail) {
+                    toast.error('Email is required to complete sign-in');
+                    setIsLoading(false);
+                    return;
+                }
+
+                try {
+                    const result = await signInWithEmailLink(auth, storedEmail, window.location.href);
+                    window.localStorage.removeItem('emailForSignIn');
+
+                    // Check if user exists in our database
+                    try {
+                        await api.get('/api/v1/users/me');
+                        toast.success('Welcome back!');
+                        navigate('/dashboard');
+                    } catch (err) {
+                        // New user - get stored role info
+                        const storedRole = window.localStorage.getItem('signupRole') || 'contributor';
+                        const storedName = window.localStorage.getItem('signupName') || 'User';
+
+                        // Register user in backend
+                        await api.post('/api/v1/users/register', {
+                            email: storedEmail,
+                            fullName: storedName,
+                            role: storedRole,
+                        });
+
+                        window.localStorage.removeItem('signupRole');
+                        window.localStorage.removeItem('signupName');
+
+                        toast.success('Account created successfully!');
+                        navigate(`/dashboard/${storedRole}`);
+                    }
+                } catch (error) {
+                    console.error('Email link sign-in error:', error);
+                    toast.error(error.message || 'Failed to sign in');
+                } finally {
+                    setIsLoading(false);
+                    // Clean up URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }
+        };
+
+        handleEmailLink();
+    }, [navigate]);
+
+    const handleSendLink = async (e) => {
         e.preventDefault();
 
         if (!email || !email.includes('@')) {
@@ -37,238 +97,166 @@ export function EmailOtpForm({ mode = 'login' }) {
 
         setIsLoading(true);
         try {
-            await api.post('/api/v1/auth/otp/send', { email });
-            setStep('otp');
-            setCountdown(60);
-            toast.success('Verification code sent to your email!');
-        } catch (error) {
-            console.error('Send OTP error:', error);
-            toast.error(error.message || 'Failed to send verification code');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+            // Store email for when user returns
+            window.localStorage.setItem('emailForSignIn', email);
 
-    const handleOTPChange = (index, value) => {
-        if (value.length > 1) {
-            const digits = value.replace(/\D/g, '').slice(0, 6).split('');
-            const newOtp = [...otp];
-            digits.forEach((digit, i) => {
-                if (index + i < 6) newOtp[index + i] = digit;
-            });
-            setOtp(newOtp);
-            const nextIndex = Math.min(index + digits.length, 5);
-            otpRefs.current[nextIndex]?.focus();
-        } else {
-            const newOtp = [...otp];
-            newOtp[index] = value.replace(/\D/g, '');
-            setOtp(newOtp);
-
-            if (value && index < 5) {
-                otpRefs.current[index + 1]?.focus();
+            // Store signup info if in signup mode
+            if (mode === 'signup') {
+                window.localStorage.setItem('signupRole', formData.role);
+                window.localStorage.setItem('signupName', formData.fullName || 'User');
             }
-        }
-    };
 
-    const handleKeyDown = (index, e) => {
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            otpRefs.current[index - 1]?.focus();
-        }
-    };
+            // Send the magic link
+            await sendSignInLinkToEmail(auth, email, ACTION_CODE_SETTINGS);
 
-    const handleVerifyOTP = async (e) => {
-        e.preventDefault();
-
-        const otpCode = otp.join('');
-        if (otpCode.length !== 6) {
-            toast.error('Please enter the complete verification code');
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const response = await api.post('/api/v1/auth/otp/verify', {
-                email,
-                otp: otpCode,
-                fullName: formData.fullName || undefined,
-                role: formData.role || undefined,
-            });
-
-            // Sign in with custom token
-            await signInWithCustomToken(auth, response.customToken);
-
-            toast.success('Welcome!');
-            navigate(`/dashboard/${response.profile?.userId ? 'contributor' : formData.role}`);
+            setStep('sent');
+            toast.success('Sign-in link sent to your email!');
         } catch (error) {
-            console.error('Verify OTP error:', error);
-            toast.error(error.message || 'Verification failed');
+            console.error('Send link error:', error);
+
+            if (error.code === 'auth/invalid-email') {
+                toast.error('Invalid email address');
+            } else if (error.code === 'auth/too-many-requests') {
+                toast.error('Too many requests. Please try again later.');
+            } else {
+                toast.error(error.message || 'Failed to send sign-in link');
+            }
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleResendOTP = async () => {
-        setIsLoading(true);
-        try {
-            await api.post('/api/v1/auth/otp/send', { email });
-            setCountdown(60);
-            setOtp(['', '', '', '', '', '']);
-            toast.success('New code sent!');
-        } catch (error) {
-            toast.error(error.message || 'Failed to resend code');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    if (isLoading && isSignInWithEmailLink(auth, window.location.href)) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <Loader2 className="w-8 h-8 animate-spin text-white" />
+                <p className="text-zinc-400">Signing you in...</p>
+            </div>
+        );
+    }
+
+    if (step === 'sent') {
+        return (
+            <div className="space-y-6 text-center py-8">
+                <div className="flex justify-center">
+                    <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
+                        <CheckCircle className="w-8 h-8 text-green-500" />
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <h3 className="text-xl font-semibold text-white">Check your email</h3>
+                    <p className="text-zinc-400">
+                        We sent a sign-in link to
+                    </p>
+                    <p className="text-white font-medium">{email}</p>
+                </div>
+
+                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-400">
+                    <p>Click the link in the email to sign in. The link expires in 1 hour.</p>
+                </div>
+
+                <div className="pt-4">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setStep('email');
+                            setEmail('');
+                        }}
+                        className="text-sm text-zinc-400 hover:text-white transition-colors"
+                    >
+                        Use a different email
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
-            {step === 'email' ? (
-                <form onSubmit={handleSendOTP} className="space-y-4">
-                    {mode === 'signup' && (
-                        <>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-muted-foreground ml-1">I want to...</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, role: 'contributor' })}
-                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${formData.role === 'contributor'
-                                            ? 'border-white bg-white/5'
-                                            : 'border-white/10 hover:border-white/30'
-                                            }`}
-                                    >
-                                        <Code className={`h-5 w-5 ${formData.role === 'contributor' ? 'text-white' : 'text-zinc-500'}`} />
-                                        <span className={`text-sm font-medium ${formData.role === 'contributor' ? 'text-white' : 'text-zinc-400'}`}>
-                                            Build & Earn
-                                        </span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, role: 'initiator' })}
-                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${formData.role === 'initiator'
-                                            ? 'border-white bg-white/5'
-                                            : 'border-white/10 hover:border-white/30'
-                                            }`}
-                                    >
-                                        <Briefcase className={`h-5 w-5 ${formData.role === 'initiator' ? 'text-white' : 'text-zinc-500'}`} />
-                                        <span className={`text-sm font-medium ${formData.role === 'initiator' ? 'text-white' : 'text-zinc-400'}`}>
-                                            Post Missions
-                                        </span>
-                                    </button>
-                                </div>
+            <form onSubmit={handleSendLink} className="space-y-4">
+                {mode === 'signup' && (
+                    <>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted-foreground ml-1">I want to...</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, role: 'contributor' })}
+                                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${formData.role === 'contributor'
+                                        ? 'border-white bg-white/5'
+                                        : 'border-white/10 hover:border-white/30'
+                                        }`}
+                                >
+                                    <Code className={`h-5 w-5 ${formData.role === 'contributor' ? 'text-white' : 'text-zinc-500'}`} />
+                                    <span className={`text-sm font-medium ${formData.role === 'contributor' ? 'text-white' : 'text-zinc-400'}`}>
+                                        Build & Earn
+                                    </span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, role: 'initiator' })}
+                                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${formData.role === 'initiator'
+                                        ? 'border-white bg-white/5'
+                                        : 'border-white/10 hover:border-white/30'
+                                        }`}
+                                >
+                                    <Briefcase className={`h-5 w-5 ${formData.role === 'initiator' ? 'text-white' : 'text-zinc-500'}`} />
+                                    <span className={`text-sm font-medium ${formData.role === 'initiator' ? 'text-white' : 'text-zinc-400'}`}>
+                                        Post Missions
+                                    </span>
+                                </button>
                             </div>
+                        </div>
 
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium text-muted-foreground ml-1">Full Name</label>
-                                <div className="relative">
-                                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                    <input
-                                        type="text"
-                                        value={formData.fullName}
-                                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                        placeholder="John Doe"
-                                        className="flex h-10 w-full rounded-md border border-white/10 bg-black pl-10 pr-3 py-2 text-sm text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-white/20"
-                                    />
-                                </div>
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-muted-foreground ml-1">Full Name</label>
+                            <div className="relative">
+                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <input
+                                    type="text"
+                                    value={formData.fullName}
+                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                    placeholder="John Doe"
+                                    className="flex h-10 w-full rounded-md border border-white/10 bg-black pl-10 pr-3 py-2 text-sm text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-white/20"
+                                />
                             </div>
+                        </div>
+                    </>
+                )}
+
+                <div className="space-y-1">
+                    <label className="text-sm font-medium text-muted-foreground ml-1">Email Address</label>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="name@example.com"
+                            required
+                            className="flex h-10 w-full rounded-md border border-white/10 bg-black pl-10 pr-3 py-2 text-sm text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-white/20"
+                        />
+                    </div>
+                    <p className="text-xs text-zinc-500 ml-1">
+                        We'll send you a magic link to sign in
+                    </p>
+                </div>
+
+                <Button
+                    type="submit"
+                    className="w-full bg-white text-black hover:bg-white/90 font-semibold h-10"
+                    disabled={isLoading || !email}
+                >
+                    {isLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <>
+                            Send Magic Link <ArrowRight className="w-4 h-4 ml-2" />
                         </>
                     )}
-
-                    <div className="space-y-1">
-                        <label className="text-sm font-medium text-muted-foreground ml-1">Email Address</label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="name@example.com"
-                                required
-                                className="flex h-10 w-full rounded-md border border-white/10 bg-black pl-10 pr-3 py-2 text-sm text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-white/20"
-                            />
-                        </div>
-                        <p className="text-xs text-zinc-500 ml-1">
-                            We'll send you a one-time verification code
-                        </p>
-                    </div>
-
-                    <Button
-                        type="submit"
-                        className="w-full bg-white text-black hover:bg-white/90 font-semibold h-10"
-                        disabled={isLoading || !email}
-                    >
-                        {isLoading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                            <>
-                                Send Code <ArrowRight className="w-4 h-4 ml-2" />
-                            </>
-                        )}
-                    </Button>
-                </form>
-            ) : (
-                <form onSubmit={handleVerifyOTP} className="space-y-6">
-                    <div className="text-center">
-                        <p className="text-sm text-zinc-400 mb-2">
-                            Enter the 6-digit code sent to
-                        </p>
-                        <p className="text-white font-medium">{email}</p>
-                        <button
-                            type="button"
-                            onClick={() => setStep('email')}
-                            className="text-xs text-zinc-500 hover:text-white mt-1"
-                        >
-                            Change email
-                        </button>
-                    </div>
-
-                    <div className="flex justify-center gap-2">
-                        {otp.map((digit, index) => (
-                            <input
-                                key={index}
-                                ref={(el) => (otpRefs.current[index] = el)}
-                                type="text"
-                                inputMode="numeric"
-                                value={digit}
-                                onChange={(e) => handleOTPChange(index, e.target.value)}
-                                onKeyDown={(e) => handleKeyDown(index, e)}
-                                className="w-12 h-14 text-center text-xl font-bold bg-zinc-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/20"
-                                maxLength={6}
-                            />
-                        ))}
-                    </div>
-
-                    <Button
-                        type="submit"
-                        className="w-full bg-white text-black hover:bg-white/90 font-semibold h-10"
-                        disabled={isLoading || otp.join('').length !== 6}
-                    >
-                        {isLoading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                            'Verify & Continue'
-                        )}
-                    </Button>
-
-                    <div className="text-center">
-                        {countdown > 0 ? (
-                            <p className="text-sm text-zinc-500">
-                                Resend code in <span className="text-white">{countdown}s</span>
-                            </p>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={handleResendOTP}
-                                disabled={isLoading}
-                                className="text-sm text-white hover:underline disabled:opacity-50"
-                            >
-                                Resend Code
-                            </button>
-                        )}
-                    </div>
-                </form>
-            )}
+                </Button>
+            </form>
         </div>
     );
 }
