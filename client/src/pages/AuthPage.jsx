@@ -1,30 +1,63 @@
 import { useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { LoginForm } from '../components/auth/LoginForm';
 import { SignupForm } from '../components/auth/SignupForm';
+import { EmailOtpForm } from '../components/auth/EmailOtpForm';
 import { Navbar } from '../components/layout/Navbar';
+import { KeyRound, Mail } from 'lucide-react';
 
 export default function AuthPage() {
     const [searchParams] = useSearchParams();
     const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'login';
     const [mode, setMode] = useState(initialMode);
+    const [authMethod, setAuthMethod] = useState('otp'); // Default to OTP for better UX
 
     return (
         <div className="min-h-screen bg-black text-white flex flex-col">
             <Navbar />
             <div className="flex-1 flex items-center justify-center px-6 py-20">
-                <div className="w-full max-w-md space-y-10">
+                <div className="w-full max-w-md space-y-8">
                     <div className="text-center space-y-2">
                         <h2 className="text-4xl font-bold tracking-tight">
                             {mode === 'login' ? 'Welcome back' : 'Create Account'}
                         </h2>
                         <p className="text-muted-foreground">
-                            {mode === 'login' ? 'Enter your credentials to access your account' : 'Start automating your workflows today'}
+                            {mode === 'login'
+                                ? 'Sign in to access your account'
+                                : 'Start automating your workflows today'}
                         </p>
                     </div>
 
-                    <div className="">
-                        {mode === 'login' ? <LoginForm /> : <SignupForm />}
+                    {/* Auth Method Tabs */}
+                    <div className="flex bg-zinc-900 rounded-lg p-1">
+                        <button
+                            onClick={() => setAuthMethod('otp')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'otp'
+                                    ? 'bg-white text-black'
+                                    : 'text-zinc-400 hover:text-white'
+                                }`}
+                        >
+                            <Mail className="w-4 h-4" />
+                            Email OTP
+                        </button>
+                        <button
+                            onClick={() => setAuthMethod('password')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'password'
+                                    ? 'bg-white text-black'
+                                    : 'text-zinc-400 hover:text-white'
+                                }`}
+                        >
+                            <KeyRound className="w-4 h-4" />
+                            Password
+                        </button>
+                    </div>
+
+                    <div>
+                        {authMethod === 'otp' ? (
+                            <EmailOtpForm mode={mode} />
+                        ) : (
+                            mode === 'login' ? <LoginForm /> : <SignupForm />
+                        )}
 
                         <div className="mt-8 text-center text-sm">
                             <span className="text-muted-foreground">
