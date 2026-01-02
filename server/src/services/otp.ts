@@ -4,58 +4,43 @@ import { sendOtpEmail } from './email.js';
 const OTP_COLLECTION = 'emailOtps';
 const OTP_EXPIRY_MINUTES = 10;
 
-interface OtpRecord {
-    email: string;
-    otp: string;
-    expiresAt: Date;
-    verified: boolean;
-    attempts: number;
-    createdAt: Date;
-}
-
 // Generate a 6-digit OTP
 const generateOtp = (): string => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Create and store OTP for an email
+// Create and store OTP for an email - simplified to avoid composite index
 export const createOtp = async (email: string): Promise<{ success: boolean; message?: string }> => {
     try {
-        // Check rate limiting - max 5 OTPs per hour per email
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const recentOtps = await db
-            .collection(OTP_COLLECTION)
-            .where('email', '==', email.toLowerCase())
-            .where('createdAt', '>', oneHourAgo)
-            .get();
-
-        if (recentOtps.size >= 5) {
-            return { success: false, message: 'Too many OTP requests. Please try again later.' };
-        }
+        const normalizedEmail = email.toLowerCase().trim();
 
         // Generate new OTP
         const otp = generateOtp();
-        const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-        // Store OTP in database
-        await db.collection(OTP_COLLECTION).add({
-            email: email.toLowerCase(),
+        // Create unique document ID based on email (overwrite previous OTP)
+        const docId = Buffer.from(normalizedEmail).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
+
+        // Store OTP - this replaces any existing OTP for this email
+        await db.collection(OTP_COLLECTION).doc(docId).set({
+            email: normalizedEmail,
             otp,
-            expiresAt,
+            expiresAt: expiresAt.toISOString(),
             verified: false,
             attempts: 0,
-            createdAt: new Date(),
+            createdAt: now.toISOString(),
         });
 
         // Send OTP via email
-        const emailResult = await sendOtpEmail(email, otp);
+        const emailResult = await sendOtpEmail(normalizedEmail, otp);
 
         if (!emailResult.success) {
             console.error('Failed to send OTP email:', emailResult.error);
             return { success: false, message: 'Failed to send verification code' };
         }
 
-        console.log(`📧 OTP sent to ${email}: ${otp}`);
+        console.log(`📧 OTP sent to ${normalizedEmail}`);
         return { success: true };
     } catch (error) {
         console.error('Create OTP error:', error);
@@ -63,32 +48,39 @@ export const createOtp = async (email: string): Promise<{ success: boolean; mess
     }
 };
 
-// Verify OTP for an email
+// Verify OTP for an email - simplified query without composite index
 export const verifyOtp = async (
     email: string,
     otp: string
 ): Promise<{ success: boolean; message?: string }> => {
     try {
-        // Find the most recent unexpired OTP for this email
-        const otpSnapshot = await db
-            .collection(OTP_COLLECTION)
-            .where('email', '==', email.toLowerCase())
-            .where('verified', '==', false)
-            .where('expiresAt', '>', new Date())
-            .orderBy('expiresAt', 'desc')
-            .limit(1)
-            .get();
+        const normalizedEmail = email.toLowerCase().trim();
+        const docId = Buffer.from(normalizedEmail).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
 
-        if (otpSnapshot.empty) {
-            return { success: false, message: 'OTP expired or not found. Please request a new one.' };
+        // Get the OTP document directly by ID
+        const otpDoc = await db.collection(OTP_COLLECTION).doc(docId).get();
+
+        if (!otpDoc.exists) {
+            return { success: false, message: 'No verification code found. Please request a new one.' };
         }
 
-        const otpDoc = otpSnapshot.docs[0];
-        const otpData = otpDoc.data() as OtpRecord;
+        const otpData = otpDoc.data()!;
+
+        // Check if expired
+        if (new Date(otpData.expiresAt) < new Date()) {
+            await otpDoc.ref.delete();
+            return { success: false, message: 'Code expired. Please request a new one.' };
+        }
+
+        // Check if already verified
+        if (otpData.verified) {
+            return { success: false, message: 'Code already used. Please request a new one.' };
+        }
 
         // Check max attempts (5 attempts)
         if (otpData.attempts >= 5) {
-            return { success: false, message: 'Too many failed attempts. Please request a new OTP.' };
+            await otpDoc.ref.delete();
+            return { success: false, message: 'Too many failed attempts. Please request a new code.' };
         }
 
         // Increment attempts
@@ -96,22 +88,11 @@ export const verifyOtp = async (
 
         // Verify OTP
         if (otpData.otp !== otp) {
-            return { success: false, message: 'Invalid verification code. Please try again.' };
+            return { success: false, message: 'Invalid code. Please try again.' };
         }
 
-        // Mark as verified
-        await otpDoc.ref.update({ verified: true });
-
-        // Clean up old OTPs for this email
-        const oldOtps = await db
-            .collection(OTP_COLLECTION)
-            .where('email', '==', email.toLowerCase())
-            .where('verified', '==', false)
-            .get();
-
-        const batch = db.batch();
-        oldOtps.docs.forEach((doc) => batch.delete(doc.ref));
-        await batch.commit();
+        // Mark as verified and delete
+        await otpDoc.ref.delete();
 
         return { success: true };
     } catch (error) {
@@ -120,19 +101,27 @@ export const verifyOtp = async (
     }
 };
 
-// Clean up expired OTPs (run periodically)
+// Clean up expired OTPs (optional - can run periodically)
 export const cleanupExpiredOtps = async (): Promise<void> => {
     try {
-        const expiredOtps = await db
-            .collection(OTP_COLLECTION)
-            .where('expiresAt', '<', new Date())
-            .get();
+        const snapshot = await db.collection(OTP_COLLECTION).get();
+        const now = new Date();
 
         const batch = db.batch();
-        expiredOtps.docs.forEach((doc) => batch.delete(doc.ref));
-        await batch.commit();
+        let count = 0;
 
-        console.log(`🧹 Cleaned up ${expiredOtps.size} expired OTPs`);
+        snapshot.docs.forEach((doc) => {
+            const data = doc.data();
+            if (new Date(data.expiresAt) < now) {
+                batch.delete(doc.ref);
+                count++;
+            }
+        });
+
+        if (count > 0) {
+            await batch.commit();
+            console.log(`🧹 Cleaned up ${count} expired OTPs`);
+        }
     } catch (error) {
         console.error('Cleanup OTPs error:', error);
     }
