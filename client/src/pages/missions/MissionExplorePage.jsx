@@ -4,7 +4,7 @@ import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
 import { Button } from '../../components/ui/Button';
 import { useMissions } from '../../hooks/useApi';
-import { Search, Filter, Cpu, Database, Layout, Shield, CheckCircle2, Loader2, X, Smartphone, Palette, Cloud, Code } from 'lucide-react';
+import { Search, Filter, Cpu, Database, Layout, Shield, CheckCircle2, X, Smartphone, Palette, Cloud, Code } from 'lucide-react';
 
 
 
@@ -191,8 +191,25 @@ export default function MissionExplorePage() {
 
 
                 {loading && (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 animate-pulse">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="w-10 h-10 bg-zinc-800 rounded-lg" />
+                                    <div className="h-6 w-20 bg-zinc-800 rounded-full" />
+                                </div>
+                                <div className="h-6 w-3/4 bg-zinc-800 rounded mb-2" />
+                                <div className="h-4 w-1/2 bg-zinc-800 rounded mb-4" />
+                                <div className="h-4 w-full bg-zinc-800 rounded mb-2" />
+                                <div className="h-4 w-4/5 bg-zinc-800 rounded mb-4" />
+                                <div className="flex gap-2 mb-4">
+                                    <div className="h-6 w-16 bg-zinc-800 rounded-full" />
+                                    <div className="h-6 w-20 bg-zinc-800 rounded-full" />
+                                    <div className="h-6 w-14 bg-zinc-800 rounded-full" />
+                                </div>
+                                <div className="h-10 w-full bg-zinc-800 rounded-lg" />
+                            </div>
+                        ))}
                     </div>
                 )}
 

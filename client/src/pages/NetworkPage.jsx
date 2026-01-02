@@ -2,7 +2,7 @@ import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
 import { Button } from '../components/ui/Button';
 import { useContributors } from '../hooks/useApi';
-import { Users, Globe, Shield, Zap, ArrowUpRight, Loader2, User } from 'lucide-react';
+import { Users, Globe, Shield, Zap, ArrowUpRight, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 const MOCK_PEERS = [
@@ -53,8 +53,27 @@ export default function NetworkPage() {
                 </div>
 
                 {loading && (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 animate-pulse">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className="w-12 h-12 rounded-full bg-zinc-800" />
+                                    <div className="h-6 w-20 bg-zinc-800 rounded-full" />
+                                </div>
+                                <div className="h-6 w-32 bg-zinc-800 rounded mb-2" />
+                                <div className="h-4 w-40 bg-zinc-800 rounded mb-6" />
+                                <div className="flex gap-2 mb-6">
+                                    <div className="h-6 w-16 bg-zinc-800 rounded-full" />
+                                    <div className="h-6 w-18 bg-zinc-800 rounded-full" />
+                                    <div className="h-6 w-14 bg-zinc-800 rounded-full" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 mb-6">
+                                    <div className="h-16 bg-zinc-800 rounded-lg" />
+                                    <div className="h-16 bg-zinc-800 rounded-lg" />
+                                </div>
+                                <div className="h-10 w-full bg-zinc-800 rounded-lg" />
+                            </div>
+                        ))}
                     </div>
                 )}
 
