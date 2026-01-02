@@ -27,6 +27,8 @@ router.get('/me', requireAuth, async (req, res) => {
     return contributorsController.getContributorById(req, res);
 });
 
+router.get('/me/applications', requireAuth, contributorsController.getMyApplications);
+
 /**
  * @route   PATCH /api/v1/contributors/me
  * @desc    Update current contributor's profile

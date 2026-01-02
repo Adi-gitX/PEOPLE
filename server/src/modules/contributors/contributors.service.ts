@@ -198,3 +198,45 @@ const calculateMatchPower = (profile: ContributorProfile, skills: ContributorSki
 
     return Math.min(power, 100);
 };
+
+/**
+ * Get all applications submitted by a contributor
+ */
+export const getMyApplications = async (contributorId: string): Promise<any[]> => {
+    const MISSIONS_COLLECTION = 'missions';
+
+    // Get all missions
+    const missionsSnapshot = await db.collection(MISSIONS_COLLECTION).get();
+
+    const applications: any[] = [];
+
+    // For each mission, check if this contributor has applied
+    for (const missionDoc of missionsSnapshot.docs) {
+        const appSnapshot = await db
+            .collection(MISSIONS_COLLECTION)
+            .doc(missionDoc.id)
+            .collection('applications')
+            .where('contributorId', '==', contributorId)
+            .get();
+
+        if (!appSnapshot.empty) {
+            const missionData = missionDoc.data();
+            for (const appDoc of appSnapshot.docs) {
+                applications.push({
+                    id: appDoc.id,
+                    ...appDoc.data(),
+                    missionId: missionDoc.id,
+                    missionTitle: missionData.title,
+                    missionStatus: missionData.status,
+                });
+            }
+        }
+    }
+
+    // Sort by creation date descending
+    return applications.sort((a, b) => {
+        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+    });
+};

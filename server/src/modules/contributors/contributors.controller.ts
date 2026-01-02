@@ -157,3 +157,23 @@ export const getAllSkills = async (_req: Request, res: Response): Promise<void> 
         sendError(res, 'Failed to get skills', 500);
     }
 };
+
+/**
+ * GET /api/v1/contributors/me/applications
+ * Get all applications submitted by current contributor
+ */
+export const getMyApplications = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            sendError(res, 'User ID not found in token', 401);
+            return;
+        }
+
+        const applications = await contributorsService.getMyApplications(uid);
+        sendSuccess(res, { applications });
+    } catch (error) {
+        console.error('Get my applications error:', error);
+        sendError(res, 'Failed to get applications', 500);
+    }
+};
