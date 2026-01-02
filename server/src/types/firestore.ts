@@ -215,6 +215,18 @@ export interface Notification extends FirestoreDocument {
     readAt?: Timestamp | Date;
 }
 
+// ─── Review ───
+export interface Review extends FirestoreDocument {
+    missionId: string;
+    reviewerId: string;
+    revieweeId: string;
+
+    rating: number; // 0-5
+    comment?: string;
+
+    isPublic: boolean;
+}
+
 // ─── Escrow Transaction ───
 export interface EscrowTransaction extends FirestoreDocument {
     missionId: string;
