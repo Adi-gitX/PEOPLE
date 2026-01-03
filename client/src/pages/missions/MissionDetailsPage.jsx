@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Button } from '../../components/ui/Button';
-import { useMission } from '../../hooks/useApi';
+import { useMission, useSkills } from '../../hooks/useApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { api } from '../../lib/api';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ export default function MissionDetailsPage() {
     const navigate = useNavigate();
     const { isAuthenticated, role } = useAuthStore();
     const { data, loading, error } = useMission(id);
+    const { skills: allSkills } = useSkills();
     const [applying, setApplying] = useState(false);
     const [showApplyModal, setShowApplyModal] = useState(false);
     const [applicationData, setApplicationData] = useState({
@@ -25,6 +26,26 @@ export default function MissionDetailsPage() {
     });
 
     const mission = data?.mission || data;
+
+    // Create a map of skill IDs to skill names for quick lookup
+    const skillsMap = useMemo(() => {
+        const map = {};
+        (allSkills || []).forEach(skill => {
+            map[skill.id] = skill.name;
+        });
+        return map;
+    }, [allSkills]);
+
+    // Resolve skill IDs to names
+    const resolvedSkills = useMemo(() => {
+        if (!mission?.requiredSkills) return [];
+        return mission.requiredSkills.map(skillId => {
+            // If it's already a name (not an ID), return as-is
+            if (skillsMap[skillId]) return skillsMap[skillId];
+            // Otherwise return the original value (might be a name already)
+            return skillId;
+        });
+    }, [mission?.requiredSkills, skillsMap]);
 
     const handleApply = async () => {
         if (!isAuthenticated) {
@@ -90,7 +111,7 @@ export default function MissionDetailsPage() {
                         <span className="text-sm text-yellow-400">This is demo data. Create missions via the Initiator dashboard.</span>
                     </div>
 
-                    {renderMissionContent(mockMission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role)}
+                    {renderMissionContent(mockMission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role, mockMission.requiredSkills || [])}
                 </div>
             </PublicLayout>
         );
@@ -104,13 +125,13 @@ export default function MissionDetailsPage() {
                     Back to Marketplace
                 </Link>
 
-                {renderMissionContent(mission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role)}
+                {renderMissionContent(mission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role, resolvedSkills)}
             </div>
         </PublicLayout>
     );
 }
 
-function renderMissionContent(mission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role) {
+function renderMissionContent(mission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role, resolvedSkills) {
     return (
         <div className="grid lg:grid-cols-[1fr_400px] gap-8">
 
@@ -164,13 +185,13 @@ function renderMissionContent(mission, showApplyModal, setShowApplyModal, handle
                 )}
 
 
-                {(mission.requiredSkills || []).length > 0 && (
+                {(resolvedSkills || []).length > 0 && (
                     <div className="p-8 rounded-xl border border-white/[0.08] bg-[#0A0A0A]">
                         <h2 className="text-xl font-bold tracking-tight mb-6">Required Skills</h2>
                         <div className="flex flex-wrap gap-2">
-                            {mission.requiredSkills.map((skill, idx) => (
+                            {(resolvedSkills || []).map((skillName, idx) => (
                                 <span key={idx} className="px-3 py-1.5 rounded-full bg-blue-500/10 text-blue-400 text-sm border border-blue-500/20">
-                                    {typeof skill === 'string' ? skill : skill.name}
+                                    {skillName}
                                 </span>
                             ))}
                         </div>

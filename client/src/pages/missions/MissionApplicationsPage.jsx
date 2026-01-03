@@ -31,8 +31,8 @@ export default function MissionApplicationsPage() {
                 api.get(`/api/v1/missions/${missionId}`),
                 api.get(`/api/v1/missions/${missionId}/applications`),
             ]);
-            setMission(missionRes.mission || missionRes);
-            setApplications(appsRes || []);
+            setMission(missionRes.data?.mission || missionRes.data);
+            setApplications(appsRes.data || []);
         } catch (error) {
             console.error('Failed to fetch data:', error);
             toast.error('Failed to load applications');

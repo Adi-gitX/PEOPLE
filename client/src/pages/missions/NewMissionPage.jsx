@@ -73,7 +73,12 @@ export default function NewMissionPage() {
             navigate(`/missions/${response.data.mission.id}`);
         } catch (error) {
             console.error('Create mission error:', error);
-            toast.error(error.message || 'Failed to create mission');
+            // Show validation details if available
+            if (error.details && Array.isArray(error.details)) {
+                error.details.forEach(d => toast.error(`${d.field}: ${d.message}`));
+            } else {
+                toast.error(error.message || 'Failed to create mission');
+            }
         } finally {
             setLoading(false);
         }
