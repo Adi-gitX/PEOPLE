@@ -34,8 +34,8 @@ export default function AdminMissionsPage() {
             if (filter.status) params.append('status', filter.status);
 
             const response = await api.get(`/api/v1/admin/missions?${params.toString()}`);
-            setMissions(response.missions || []);
-            setTotal(response.total || 0);
+            setMissions(response.data?.missions || []);
+            setTotal(response.data?.total || 0);
         } catch (error) {
             console.error('Failed to fetch missions:', error);
             toast.error('Failed to load missions');

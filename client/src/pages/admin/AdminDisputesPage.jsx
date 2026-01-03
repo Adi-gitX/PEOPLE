@@ -32,7 +32,7 @@ export default function AdminDisputesPage() {
             if (filter) params.append('status', filter);
 
             const response = await api.get(`/api/v1/admin/disputes?${params.toString()}`);
-            setDisputes(response.disputes || []);
+            setDisputes(response.data?.disputes || []);
         } catch (error) {
             console.error('Failed to fetch disputes:', error);
             toast.error('Failed to load disputes');
@@ -186,8 +186,8 @@ export default function AdminDisputesPage() {
                                         type="button"
                                         onClick={() => setFavoredParty('initiator')}
                                         className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${favoredParty === 'initiator'
-                                                ? 'border-blue-500 bg-blue-500/10 text-blue-400'
-                                                : 'border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                            ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                                            : 'border-zinc-700 text-zinc-400 hover:border-zinc-600'
                                             }`}
                                     >
                                         Initiator
@@ -196,8 +196,8 @@ export default function AdminDisputesPage() {
                                         type="button"
                                         onClick={() => setFavoredParty('contributor')}
                                         className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${favoredParty === 'contributor'
-                                                ? 'border-green-500 bg-green-500/10 text-green-400'
-                                                : 'border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                            ? 'border-green-500 bg-green-500/10 text-green-400'
+                                            : 'border-zinc-700 text-zinc-400 hover:border-zinc-600'
                                             }`}
                                     >
                                         Contributor
