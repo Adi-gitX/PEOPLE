@@ -29,8 +29,7 @@ export const requireAdmin = async (
         }
 
         next();
-    } catch (error) {
-        console.error('Admin auth error:', error);
+    } catch {
         sendError(res, 'Authorization failed', 500);
     }
 };

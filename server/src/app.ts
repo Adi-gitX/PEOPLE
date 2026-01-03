@@ -1,12 +1,8 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { env } from './config/index.js';
-
-// Import security middleware
 import { apiLimiter, authLimiter, otpLimiter, paymentLimiter } from './middleware/rateLimit.js';
 import { securityHeaders, sanitizeRequest } from './middleware/security.js';
-
-// Import route modules
 import { usersRoutes } from './modules/users/index.js';
 import { contributorsRoutes } from './modules/contributors/index.js';
 import { skillsRoutes } from './modules/skills/index.js';
@@ -31,12 +27,8 @@ import { favoritesRoutes } from './modules/favorites/index.js';
 
 const app: Express = express();
 
-// ─── Security Middleware ──────────────────────────────────────────────────────
-
-// Security headers
 app.use(securityHeaders);
 
-// CORS configuration
 const allowedOrigins = [
     env.FRONTEND_URL,
     'https://peoplemissions.vercel.app',
@@ -50,8 +42,7 @@ app.use(cors({
         if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            console.warn(`CORS blocked origin: ${origin}`);
-            callback(null, true); // Allow in development
+            callback(null, true);
         }
     },
     credentials: true,
@@ -59,19 +50,10 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
 }));
 
-// Parse JSON bodies
 app.use(express.json({ limit: '10mb' }));
-
-// Parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }));
-
-// Sanitize all incoming requests
 app.use(sanitizeRequest);
-
-// Apply rate limiting to API routes
 app.use('/api/', apiLimiter);
-
-// ─── Health Check ─────────────────────────────────────────────────────────────
 
 app.get('/', (_req: Request, res: Response) => {
     res.json({
@@ -95,46 +77,28 @@ app.get('/api/health', (_req: Request, res: Response) => {
     });
 });
 
-// ─── API Routes ───────────────────────────────────────────────────────────────
-
-// Core modules
 app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/contributors', contributorsRoutes);
 app.use('/api/v1/skills', skillsRoutes);
 app.use('/api/v1/missions', missionsRoutes);
 app.use('/api/v1/initiators', initiatorsRoutes);
-
-// Communication
 app.use('/api/v1/notifications', notificationsRoutes);
 app.use('/api/v1/conversations', messagesRoutes);
 app.use('/api/v1/reviews', reviewsRoutes);
 app.use('/api/v1/contact', contactRoutes);
-
-// Authentication (with stricter rate limiting)
 app.use('/api/v1/auth/otp', otpLimiter, otpRoutes);
-
-// Business logic
 app.use('/api/v1/proposals', proposalsRoutes);
 app.use('/api/v1/contracts', contractsRoutes);
 app.use('/api/v1/matching', matchingRoutes);
-
-// Financial (with payment rate limiting)
 app.use('/api/v1/payments', paymentLimiter, paymentsRoutes);
 app.use('/api/v1/withdrawals', paymentLimiter, withdrawalsRoutes);
 app.use('/api/v1/invoices', invoicesRoutes);
-
-// New modules
 app.use('/api/v1/disputes', disputesRoutes);
 app.use('/api/v1/teams', teamsRoutes);
 app.use('/api/v1/portfolio', portfolioRoutes);
 app.use('/api/v1/favorites', favoritesRoutes);
-
-// Admin (with auth limiting)
 app.use('/api/v1/admin', authLimiter, adminRoutes);
 
-// ─── Error Handling ───────────────────────────────────────────────────────────
-
-// 404 handler
 app.use((_req: Request, res: Response) => {
     res.status(404).json({
         success: false,
@@ -143,13 +107,7 @@ app.use((_req: Request, res: Response) => {
     });
 });
 
-// Global error handler
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('Error:', err.message);
-    if (env.NODE_ENV === 'development') {
-        console.error(err.stack);
-    }
-
     res.status(500).json({
         success: false,
         error: 'Internal Server Error',

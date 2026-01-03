@@ -19,29 +19,24 @@ const verifyOtpSchema = z.object({
     role: z.enum(['contributor', 'initiator']).optional(),
 });
 
-// Send OTP to email
 router.post(
     '/send',
     validate(sendOtpSchema),
     async (req: Request, res: Response): Promise<void> => {
         try {
             const { email } = req.body;
-
             const result = await otpService.createOtp(email);
-
             if (result.success) {
                 sendSuccess(res, { message: 'Verification code sent to your email' });
             } else {
                 sendError(res, result.message || 'Failed to send OTP', 400);
             }
-        } catch (error) {
-            console.error('Send OTP error:', error);
+        } catch {
             sendError(res, 'Failed to send verification code', 500);
         }
     }
 );
 
-// Verify OTP and create/login user
 router.post(
     '/verify',
     validate(verifyOtpSchema),
@@ -49,7 +44,6 @@ router.post(
         try {
             const { email, otp, fullName, role } = req.body;
 
-            // Verify the OTP
             const verifyResult = await otpService.verifyOtp(email, otp);
 
             if (!verifyResult.success) {
@@ -57,20 +51,17 @@ router.post(
                 return;
             }
 
-            // Check if user exists in Firebase
             let firebaseUser;
             try {
                 firebaseUser = await admin.auth().getUserByEmail(email);
             } catch (error: any) {
                 if (error.code === 'auth/user-not-found') {
-                    // Create new Firebase user
                     firebaseUser = await admin.auth().createUser({
                         email,
                         emailVerified: true,
                         displayName: fullName || 'User',
                     });
 
-                    // Create user in our database
                     await usersService.createUser(firebaseUser.uid, {
                         email,
                         fullName: fullName || 'User',
@@ -81,10 +72,7 @@ router.post(
                 }
             }
 
-            // Generate custom token for client-side sign in
             const customToken = await admin.auth().createCustomToken(firebaseUser.uid);
-
-            // Get user profile
             const { user, profile } = await usersService.getUserWithProfile(firebaseUser.uid);
 
             sendSuccess(res, {
@@ -93,8 +81,7 @@ router.post(
                 user,
                 profile,
             });
-        } catch (error) {
-            console.error('Verify OTP error:', error);
+        } catch {
             sendError(res, 'Verification failed', 500);
         }
     }

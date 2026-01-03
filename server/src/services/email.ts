@@ -2,7 +2,6 @@ import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 import dotenv from 'dotenv';
 
-// Reload env to ensure we have latest values
 dotenv.config();
 
 const GMAIL_USER = process.env.GMAIL_USER;
@@ -11,7 +10,6 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Initialize Resend client
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 const createGmailTransporter = () => {
@@ -36,7 +34,6 @@ interface SendResult {
   provider?: 'resend' | 'gmail' | 'dev';
 }
 
-// Beautiful dark-themed email template
 const createEmailTemplate = (content: string) => `
 <!DOCTYPE html>
 <html>
@@ -50,15 +47,12 @@ const createEmailTemplate = (content: string) => `
     <tr>
       <td align="center" style="padding: 40px 20px;">
         
-        <!-- Main Container -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%); border: 1px solid #27272a; border-radius: 24px; overflow: hidden;">
           
-          <!-- Header with Gradient Accent -->
           <tr>
             <td style="height: 4px; background: linear-gradient(90deg, #a855f7 0%, #ec4899 50%, #f97316 100%);"></td>
           </tr>
           
-          <!-- Logo Section -->
           <tr>
             <td align="center" style="padding: 48px 40px 24px;">
               <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px; color: #ffffff;">PEOPLE</h1>
@@ -66,21 +60,18 @@ const createEmailTemplate = (content: string) => `
             </td>
           </tr>
           
-          <!-- Divider -->
           <tr>
             <td style="padding: 0 40px;">
               <div style="height: 1px; background: linear-gradient(90deg, transparent 0%, #27272a 50%, transparent 100%);"></div>
             </td>
           </tr>
           
-          <!-- Main Content -->
           <tr>
             <td style="padding: 40px;">
               ${content}
             </td>
           </tr>
           
-          <!-- Footer -->
           <tr>
             <td style="padding: 0 40px 32px;">
               <div style="height: 1px; background: #27272a; margin-bottom: 24px;"></div>
@@ -101,7 +92,6 @@ const createEmailTemplate = (content: string) => `
 </html>
 `;
 
-// Send email via Resend
 const sendViaResend = async (
   to: string,
   subject: string,
@@ -112,7 +102,6 @@ const sendViaResend = async (
   }
 
   try {
-    // Use verified domain in production, or onboarding@resend.dev for testing
     const fromEmail = NODE_ENV === 'production'
       ? `PEOPLE <noreply@${process.env.RESEND_DOMAIN || 'resend.dev'}>`
       : 'PEOPLE <onboarding@resend.dev>';
@@ -125,18 +114,15 @@ const sendViaResend = async (
     });
 
     if (error) {
-      console.error('📧 Resend error:', error);
       return { success: false, error: error.message };
     }
 
     return { success: true, messageId: data?.id, provider: 'resend' };
   } catch (error: any) {
-    console.error('📧 Resend exception:', error.message);
     return { success: false, error: error.message };
   }
 };
 
-// Send email via Gmail SMTP
 const sendViaGmail = async (
   to: string,
   subject: string,
@@ -157,18 +143,15 @@ const sendViaGmail = async (
     const info = await gmailTransporter.sendMail(mailOptions);
     return { success: true, messageId: info.messageId, provider: 'gmail' };
   } catch (error: any) {
-    console.error('📧 Gmail error:', error.message);
     return { success: false, error: error.message };
   }
 };
 
-// Main send email function with fallback
 export const sendEmail = async (
   to: string,
   subject: string,
   html: string
 ): Promise<SendResult> => {
-  // Try Resend first
   if (resend) {
     const resendResult = await sendViaResend(to, subject, html);
     if (resendResult.success) {
@@ -193,7 +176,6 @@ export const sendEmail = async (
 export const sendOtpEmail = async (email: string, otp: string): Promise<SendResult> => {
 
   const content = `
-        <!-- Icon -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
           <tr>
             <td align="center" style="padding-bottom: 24px;">
@@ -204,17 +186,14 @@ export const sendOtpEmail = async (email: string, otp: string): Promise<SendResu
           </tr>
         </table>
         
-        <!-- Heading -->
         <h2 style="margin: 0 0 16px; color: #ffffff; font-size: 24px; font-weight: 600; text-align: center; line-height: 1.3;">
           Your Verification Code
         </h2>
         
-        <!-- Description -->
         <p style="margin: 0 0 24px; color: #a1a1aa; font-size: 15px; line-height: 1.7; text-align: center;">
           Enter this code to sign in to your PEOPLE account:
         </p>
         
-        <!-- OTP Code Box -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
           <tr>
             <td align="center">
@@ -225,12 +204,10 @@ export const sendOtpEmail = async (email: string, otp: string): Promise<SendResu
           </tr>
         </table>
         
-        <!-- Expiry Notice -->
         <p style="margin: 24px 0 0; color: #71717a; font-size: 14px; text-align: center;">
           This code expires in <strong style="color: #ffffff;">10 minutes</strong>
         </p>
         
-        <!-- Security Notice -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top: 32px; background: #18181b; border: 1px solid #27272a; border-radius: 12px;">
           <tr>
             <td style="padding: 16px 20px;">
@@ -252,7 +229,6 @@ export const sendOtpEmail = async (email: string, otp: string): Promise<SendResu
   return sendEmail(email, '🔐 Your PEOPLE Verification Code', createEmailTemplate(content));
 };
 
-// Welcome Email Template  
 export const sendWelcomeEmail = async (email: string, name: string): Promise<boolean> => {
   const content = `
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -288,7 +264,6 @@ export const sendWelcomeEmail = async (email: string, name: string): Promise<boo
   return result.success;
 };
 
-// Application Notification Email
 export const sendApplicationNotification = async (
   initiatorEmail: string,
   missionTitle: string,
@@ -338,7 +313,6 @@ export const sendApplicationNotification = async (
   return result.success;
 };
 
-// Contact Form Email
 export const sendContactFormEmail = async (
   fromEmail: string,
   fromName: string,

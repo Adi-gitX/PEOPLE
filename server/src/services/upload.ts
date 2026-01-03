@@ -1,6 +1,3 @@
-// File Upload Service
-// Supports Cloudinary (production) with fallback to demo mode
-
 export type AllowedMimeType = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
 
 export interface UploadResult {
@@ -23,10 +20,9 @@ export interface UploadOptions {
     };
 }
 
-const DEFAULT_MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const DEFAULT_MAX_SIZE = 5 * 1024 * 1024;
 const DEFAULT_ALLOWED_TYPES: AllowedMimeType[] = ['image/jpeg', 'image/png', 'image/webp'];
 
-// Check if Cloudinary is configured
 const isCloudinaryConfigured = () => {
     return !!(
         process.env.CLOUDINARY_CLOUD_NAME &&
@@ -57,10 +53,8 @@ export const uploadImage = async (
     base64Data: string,
     options: UploadOptions = {}
 ): Promise<UploadResult> => {
-    // Use Cloudinary if configured and installed
     if (isCloudinaryConfigured()) {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
             const cloudinaryModule = require('cloudinary');
             const cloudinary = cloudinaryModule.v2;
 
@@ -95,8 +89,7 @@ export const uploadImage = async (
                 height: result.height,
                 size: result.bytes,
             };
-        } catch (error) {
-            console.error('Cloudinary upload failed (is cloudinary installed?):', error);
+        } catch {
             // Fall through to demo mode
         }
     }
@@ -117,7 +110,6 @@ export const uploadImage = async (
 export const deleteImage = async (publicId: string): Promise<boolean> => {
     if (isCloudinaryConfigured()) {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
             const cloudinaryModule = require('cloudinary');
             const cloudinary = cloudinaryModule.v2;
             cloudinary.config({
@@ -127,8 +119,7 @@ export const deleteImage = async (publicId: string): Promise<boolean> => {
             });
             await cloudinary.uploader.destroy(publicId);
             return true;
-        } catch (error) {
-            console.error('Cloudinary delete failed:', error);
+        } catch {
             return false;
         }
     }

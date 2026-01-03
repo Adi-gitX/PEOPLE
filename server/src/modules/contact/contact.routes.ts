@@ -29,8 +29,7 @@ router.post(
             } else {
                 sendError(res, 'Failed to send message. Please try again.', 500);
             }
-        } catch (error) {
-            console.error('Contact form error:', error);
+        } catch {
             sendError(res, 'Failed to send message', 500);
         }
     }

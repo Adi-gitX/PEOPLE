@@ -9,9 +9,7 @@ export const createCheckout = async (req: Request, res: Response): Promise<void>
             sendError(res, 'User ID not found', 401);
             return;
         }
-
         const { missionId, amount, successUrl, cancelUrl } = req.body;
-
         const result = await paymentsService.createCheckoutSession(
             missionId,
             uid,
@@ -19,10 +17,8 @@ export const createCheckout = async (req: Request, res: Response): Promise<void>
             successUrl || `${process.env.FRONTEND_URL}/dashboard`,
             cancelUrl || `${process.env.FRONTEND_URL}/missions/${missionId}`
         );
-
         sendSuccess(res, result);
-    } catch (error) {
-        console.error('Create checkout error:', error);
+    } catch {
         sendError(res, 'Failed to create checkout session', 500);
     }
 };
@@ -34,11 +30,9 @@ export const getMyBalance = async (req: Request, res: Response): Promise<void> =
             sendError(res, 'User ID not found', 401);
             return;
         }
-
         const balance = await paymentsService.getContributorBalance(uid);
         sendSuccess(res, balance);
-    } catch (error) {
-        console.error('Get balance error:', error);
+    } catch {
         sendError(res, 'Failed to get balance', 500);
     }
 };
@@ -50,16 +44,13 @@ export const getMyPaymentHistory = async (req: Request, res: Response): Promise<
             sendError(res, 'User ID not found', 401);
             return;
         }
-
         const { role } = req.query;
         const history = await paymentsService.getPaymentHistory(
             uid,
             (role as 'contributor' | 'initiator') || 'contributor'
         );
-
         sendSuccess(res, { transactions: history });
-    } catch (error) {
-        console.error('Get payment history error:', error);
+    } catch {
         sendError(res, 'Failed to get payment history', 500);
     }
 };
@@ -69,8 +60,7 @@ export const getMissionPayments = async (req: Request, res: Response): Promise<v
         const { missionId } = req.params;
         const payments = await paymentsService.getMissionPayments(missionId);
         sendSuccess(res, { payments });
-    } catch (error) {
-        console.error('Get mission payments error:', error);
+    } catch {
         sendError(res, 'Failed to get mission payments', 500);
     }
 };
@@ -82,13 +72,10 @@ export const releaseEscrow = async (req: Request, res: Response): Promise<void> 
             sendError(res, 'User ID not found', 401);
             return;
         }
-
         const { missionId, contributorId, amount } = req.body;
-
         const transaction = await paymentsService.releaseEscrow(missionId, contributorId, amount);
         sendSuccess(res, { transaction });
-    } catch (error) {
-        console.error('Release escrow error:', error);
+    } catch {
         sendError(res, 'Failed to release escrow', 500);
     }
 };
