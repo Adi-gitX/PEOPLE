@@ -1,16 +1,12 @@
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { Button } from '../components/ui/Button';
 import { ArrowRight, CheckCircle2, Terminal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function LandingPage() {
     return (
-        <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
-            <Navbar />
-
-
-            <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 border-b border-white/5 overflow-hidden">
+        <PublicLayout>
+            <section className="relative pt-16 pb-20 md:pt-32 md:pb-32 px-6 border-b border-white/5 overflow-hidden">
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
 
 
@@ -185,8 +181,6 @@ export default function LandingPage() {
                     </div>
                 </div>
             </section>
-
-            <Footer />
-        </div>
+        </PublicLayout>
     );
 }

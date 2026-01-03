@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { Button } from '../components/ui/Button';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -24,9 +23,8 @@ export default function WaitlistPage() {
 
     if (submitted) {
         return (
-            <div className="min-h-screen bg-black text-white">
-                <Navbar />
-                <div className="pt-32 pb-24 px-6 max-w-xl mx-auto text-center">
+            <PublicLayout>
+                <div className="py-16 px-6 max-w-xl mx-auto text-center">
                     <div className="w-16 h-16 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center mx-auto mb-8">
                         <CheckCircle2 className="w-8 h-8 text-white" />
                     </div>
@@ -34,16 +32,13 @@ export default function WaitlistPage() {
                     <p className="text-zinc-400 mb-2">We'll email you when your spot opens.</p>
                     <p className="text-sm text-zinc-600 font-mono">Position #4,892</p>
                 </div>
-                <Footer />
-            </div>
+            </PublicLayout>
         );
     }
 
     return (
-        <div className="min-h-screen bg-black text-white">
-            <Navbar />
-
-            <div className="pt-32 pb-24 px-6 max-w-xl mx-auto">
+        <PublicLayout>
+            <div className="py-16 px-6 max-w-xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-12">
                     <p className="text-sm font-mono text-zinc-500 uppercase tracking-widest mb-4">Early Access</p>
@@ -92,8 +87,8 @@ export default function WaitlistPage() {
                                 type="button"
                                 onClick={() => setRole('contributor')}
                                 className={`p-4 rounded-xl border text-left transition-all ${role === 'contributor'
-                                        ? 'bg-white text-black border-white'
-                                        : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+                                    ? 'bg-white text-black border-white'
+                                    : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
                                     }`}
                             >
                                 <div className="font-medium">Contribute</div>
@@ -103,8 +98,8 @@ export default function WaitlistPage() {
                                 type="button"
                                 onClick={() => setRole('initiator')}
                                 className={`p-4 rounded-xl border text-left transition-all ${role === 'initiator'
-                                        ? 'bg-white text-black border-white'
-                                        : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+                                    ? 'bg-white text-black border-white'
+                                    : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
                                     }`}
                             >
                                 <div className="font-medium">Initiate</div>
@@ -122,8 +117,6 @@ export default function WaitlistPage() {
                     </Button>
                 </form>
             </div>
-
-            <Footer />
-        </div>
+        </PublicLayout>
     );
 }

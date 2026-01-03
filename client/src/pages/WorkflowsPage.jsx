@@ -1,5 +1,4 @@
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { Button } from '../components/ui/Button';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
@@ -34,10 +33,8 @@ const STEPS = [
 
 export default function WorkflowsPage() {
     return (
-        <div className="min-h-screen bg-black text-white">
-            <Navbar />
-
-            <div className="pt-32 pb-24 px-6 max-w-4xl mx-auto">
+        <PublicLayout>
+            <div className="py-16 px-6 max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-20">
                     <p className="text-sm font-mono text-zinc-500 uppercase tracking-widest mb-4">How it works</p>
@@ -50,13 +47,13 @@ export default function WorkflowsPage() {
                 </div>
 
                 {/* Steps */}
-                <div className="space-y-0 mb-20">
+                <div className="space-y-0 mb-20 bg-zinc-900/20 rounded-2xl border border-white/5 overflow-hidden backdrop-blur-sm">
                     {STEPS.map((step, idx) => (
                         <div
                             key={step.number}
-                            className="flex gap-8 py-10 border-b border-zinc-800 last:border-0"
+                            className="flex flex-col md:flex-row gap-8 p-10 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors"
                         >
-                            <div className="text-5xl font-bold text-zinc-800 font-mono w-20 shrink-0">
+                            <div className="text-5xl font-bold text-zinc-700 font-mono w-20 shrink-0">
                                 {step.number}
                             </div>
                             <div>
@@ -72,7 +69,7 @@ export default function WorkflowsPage() {
                 </div>
 
                 {/* CTA */}
-                <div className="text-center py-16 border border-zinc-800 rounded-2xl">
+                <div className="text-center py-16 border border-zinc-800 rounded-2xl bg-zinc-900/20 backdrop-blur-sm">
                     <h2 className="text-3xl font-bold mb-4">Ready to start?</h2>
                     <p className="text-zinc-400 mb-8">Join thousands shipping faster with PEOPLE.</p>
                     <div className="flex justify-center gap-4">
@@ -90,8 +87,6 @@ export default function WorkflowsPage() {
                     </div>
                 </div>
             </div>
-
-            <Footer />
-        </div>
+        </PublicLayout>
     );
 }

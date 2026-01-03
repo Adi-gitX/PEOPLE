@@ -1,5 +1,4 @@
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { Button } from '../components/ui/Button';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
@@ -27,10 +26,8 @@ const TEAM = [
 
 export default function AboutPage() {
     return (
-        <div className="min-h-screen bg-black text-white">
-            <Navbar />
-
-            <div className="pt-32 pb-24 px-6 max-w-5xl mx-auto">
+        <PublicLayout>
+            <div className="py-16 px-6 max-w-5xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-20">
                     <p className="text-sm font-mono text-zinc-500 uppercase tracking-widest mb-4">About</p>
@@ -116,8 +113,6 @@ export default function AboutPage() {
                     </div>
                 </div>
             </div>
-
-            <Footer />
-        </div>
+        </PublicLayout >
     );
 }

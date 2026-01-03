@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Send, MessageSquare, Loader2 } from 'lucide-react';
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
 
@@ -52,10 +51,8 @@ export default function ContactPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col">
-            <Navbar />
-
-            <div className="flex-1 pt-32 pb-20 px-6 max-w-4xl mx-auto w-full flex flex-col items-center justify-center min-h-[80vh]">
+        <PublicLayout>
+            <div className="flex-1 py-16 px-6 max-w-4xl mx-auto w-full flex flex-col items-center justify-center min-h-[80vh]">
                 <div className="text-center mb-12 space-y-4">
                     <h1 className="text-5xl font-bold tracking-tighter mb-4">Contact Support</h1>
                     <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
@@ -162,7 +159,6 @@ export default function ContactPage() {
                 </div>
             </div>
 
-            <Footer />
-        </div>
+        </PublicLayout>
     );
 }

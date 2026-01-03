@@ -1,5 +1,4 @@
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { ArrowRight, Github, Slack, Database, Mail, Globe, Layout, Shield } from 'lucide-react';
 
 const INTEGRATIONS = [
@@ -61,10 +60,8 @@ const INTEGRATIONS = [
 
 export default function IntegrationsPage() {
     return (
-        <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
-            <Navbar />
-
-            <div className="pt-32 pb-20 px-6 max-w-7xl mx-auto">
+        <PublicLayout>
+            <div className="py-16 px-6 max-w-7xl mx-auto min-h-[calc(100vh-4rem)]">
                 <div className="mb-16">
                     <h1 className="text-5xl font-bold tracking-tighter mb-6">Integrations</h1>
                     <p className="text-muted-foreground text-xl max-w-2xl leading-relaxed">
@@ -74,7 +71,7 @@ export default function IntegrationsPage() {
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {INTEGRATIONS.map((tool) => (
-                        <div key={tool.id} className="group relative rounded-2xl border border-white/10 bg-white/[0.02] p-8 hover:border-white/20 transition-all duration-500 overflow-hidden">
+                        <div key={tool.id} className="group relative rounded-2xl border border-white/10 bg-white/[0.02] p-8 hover:border-white/20 transition-all duration-500 overflow-hidden backdrop-blur-sm">
 
                             <div className={`absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none ${tool.bg} blur-3xl`} />
 
@@ -102,7 +99,6 @@ export default function IntegrationsPage() {
                     ))}
                 </div>
             </div>
-            <Footer />
-        </div>
+        </PublicLayout>
     );
 }

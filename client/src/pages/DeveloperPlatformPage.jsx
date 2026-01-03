@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { Button } from '../components/ui/Button';
 import { Link } from 'react-router-dom';
 import { Copy, Check, ArrowRight, Terminal, Code, Webhook, Key } from 'lucide-react';
@@ -35,10 +34,8 @@ export default function DeveloperPlatformPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white">
-            <Navbar />
-
-            <div className="pt-32 pb-24 px-6 max-w-5xl mx-auto">
+        <PublicLayout>
+            <div className="py-16 px-6 max-w-5xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-20">
                     <p className="text-sm font-mono text-zinc-500 uppercase tracking-widest mb-4">For Developers</p>
@@ -53,7 +50,7 @@ export default function DeveloperPlatformPage() {
                 {/* Features Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
                     {FEATURES.map((f) => (
-                        <div key={f.title} className="p-6 bg-zinc-900 rounded-xl border border-zinc-800">
+                        <div key={f.title} className="p-6 bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-white/10 hover:border-white/20 transition-all">
                             <f.icon className="w-6 h-6 text-white mb-4" />
                             <div className="font-semibold text-white mb-1">{f.title}</div>
                             <div className="text-sm text-zinc-500">{f.desc}</div>
@@ -73,15 +70,22 @@ export default function DeveloperPlatformPage() {
                             {copied ? 'Copied' : 'Copy'}
                         </button>
                     </div>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-                        <pre className="p-6 overflow-x-auto text-sm">
+                    <div className="bg-[#0D0D0D] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+                        <div className="flex items-center px-4 py-2 border-b border-white/5 bg-white/5">
+                            <div className="flex gap-1.5">
+                                <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
+                                <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+                                <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
+                            </div>
+                        </div>
+                        <pre className="p-6 overflow-x-auto text-sm font-mono leading-relaxed">
                             <code className="text-zinc-300">{CODE_EXAMPLE}</code>
                         </pre>
                     </div>
                 </div>
 
                 {/* CTA */}
-                <div className="text-center py-16 border border-zinc-800 rounded-2xl">
+                <div className="text-center py-16 border border-zinc-800 rounded-2xl bg-zinc-900/20 backdrop-blur-sm">
                     <h2 className="text-3xl font-bold mb-4">Get API access</h2>
                     <p className="text-zinc-400 mb-8">Join our developer beta and start building.</p>
                     <div className="flex justify-center gap-4">
@@ -94,8 +98,6 @@ export default function DeveloperPlatformPage() {
                     </div>
                 </div>
             </div>
-
-            <Footer />
-        </div>
+        </PublicLayout>
     );
 }

@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { LoginForm } from '../components/auth/LoginForm';
 import { SignupForm } from '../components/auth/SignupForm';
 import { EmailOtpForm } from '../components/auth/EmailOtpForm';
-import { Navbar } from '../components/layout/Navbar';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { KeyRound, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -40,9 +40,8 @@ export default function AuthPage() {
     }
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col">
-            <Navbar />
-            <div className="flex-1 flex items-center justify-center px-6 py-20">
+        <PublicLayout showFooter={false}>
+            <div className="flex-1 flex items-center justify-center px-6 py-20 min-h-[calc(100vh-4rem)]">
                 <div className="w-full max-w-md space-y-8">
                     <div className="text-center space-y-2">
                         <h2 className="text-4xl font-bold tracking-tight">
@@ -99,6 +98,6 @@ export default function AuthPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </PublicLayout>
     );
 }

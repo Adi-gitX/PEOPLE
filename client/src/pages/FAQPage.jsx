@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { ChevronDown, Search } from 'lucide-react';
 
 const FAQ_DATA = [
@@ -97,10 +96,8 @@ export default function FAQPage() {
     })).filter(category => category.questions.length > 0);
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col">
-            <Navbar />
-
-            <div className="flex-1 pt-32 pb-20 px-6 max-w-4xl mx-auto w-full">
+        <PublicLayout>
+            <div className="flex-1 py-16 px-6 max-w-4xl mx-auto w-full">
                 <div className="text-center mb-12">
                     <h1 className="text-4xl font-bold tracking-tighter mb-4">Frequently Asked Questions</h1>
                     <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
@@ -173,8 +170,6 @@ export default function FAQPage() {
                     </a>
                 </div>
             </div>
-
-            <Footer />
-        </div>
+        </PublicLayout >
     );
 }

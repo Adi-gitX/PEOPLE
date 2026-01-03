@@ -1,5 +1,4 @@
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { Button } from '../components/ui/Button';
 import { Link } from 'react-router-dom';
 import { Check, ArrowRight } from 'lucide-react';
@@ -60,10 +59,8 @@ const PLANS = [
 
 export default function PricingPage() {
     return (
-        <div className="min-h-screen bg-black text-white">
-            <Navbar />
-
-            <div className="pt-32 pb-24 px-6 max-w-6xl mx-auto">
+        <PublicLayout>
+            <div className="py-16 px-6 max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-20">
                     <p className="text-sm font-mono text-zinc-500 uppercase tracking-widest mb-4">Pricing</p>
@@ -81,8 +78,8 @@ export default function PricingPage() {
                         <div
                             key={plan.name}
                             className={`rounded-2xl p-8 ${plan.highlighted
-                                    ? 'bg-white text-black'
-                                    : 'bg-zinc-900 border border-zinc-800'
+                                ? 'bg-white text-black'
+                                : 'bg-zinc-900 border border-zinc-800'
                                 }`}
                         >
                             <div className="mb-8">
@@ -117,8 +114,8 @@ export default function PricingPage() {
                             <Link to={plan.href} className="block">
                                 <Button
                                     className={`w-full h-12 font-medium ${plan.highlighted
-                                            ? 'bg-black text-white hover:bg-zinc-800'
-                                            : 'bg-white text-black hover:bg-zinc-200'
+                                        ? 'bg-black text-white hover:bg-zinc-800'
+                                        : 'bg-white text-black hover:bg-zinc-200'
                                         }`}
                                 >
                                     {plan.cta}
@@ -140,7 +137,6 @@ export default function PricingPage() {
                 </div>
             </div>
 
-            <Footer />
-        </div>
+        </PublicLayout >
     );
 }

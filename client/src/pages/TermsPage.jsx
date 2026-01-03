@@ -1,12 +1,9 @@
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 
 export default function TermsPage() {
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col">
-            <Navbar />
-
-            <div className="flex-1 pt-32 pb-20 px-6 max-w-4xl mx-auto w-full">
+        <PublicLayout>
+            <div className="flex-1 py-16 px-6 max-w-4xl mx-auto w-full min-h-[calc(100vh-4rem)]">
                 <h1 className="text-4xl font-bold tracking-tighter mb-8">Terms of Service</h1>
                 <p className="text-sm text-zinc-500 mb-8">Last updated: January 2, 2026</p>
 
@@ -84,8 +81,6 @@ export default function TermsPage() {
                     </section>
                 </div>
             </div>
-
-            <Footer />
-        </div>
+        </PublicLayout>
     );
 }
