@@ -1,7 +1,5 @@
 // File Upload Service
-// This service handles file uploads to cloud storage
-// In production, integrate with Cloudinary, AWS S3, or Firebase Storage
-// Note: env import will be needed when Cloudinary integration is enabled
+// Supports Cloudinary (production) with fallback to demo mode
 
 export type AllowedMimeType = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
 
@@ -28,6 +26,15 @@ export interface UploadOptions {
 const DEFAULT_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const DEFAULT_ALLOWED_TYPES: AllowedMimeType[] = ['image/jpeg', 'image/png', 'image/webp'];
 
+// Check if Cloudinary is configured
+const isCloudinaryConfigured = () => {
+    return !!(
+        process.env.CLOUDINARY_CLOUD_NAME &&
+        process.env.CLOUDINARY_API_KEY &&
+        process.env.CLOUDINARY_API_SECRET
+    );
+};
+
 export const validateFile = (
     file: { mimetype: string; size: number },
     options: UploadOptions = {}
@@ -50,37 +57,55 @@ export const uploadImage = async (
     base64Data: string,
     options: UploadOptions = {}
 ): Promise<UploadResult> => {
-    // Production: Use Cloudinary
-    // const cloudinary = require('cloudinary').v2;
-    // cloudinary.config({
-    //     cloud_name: env.CLOUDINARY_CLOUD_NAME,
-    //     api_key: env.CLOUDINARY_API_KEY,
-    //     api_secret: env.CLOUDINARY_API_SECRET,
-    // });
-    // 
-    // const result = await cloudinary.uploader.upload(base64Data, {
-    //     folder: options.folder || 'people-uploads',
-    //     transformation: options.transformation,
-    //     resource_type: 'image',
-    // });
-    // 
-    // return {
-    //     url: result.secure_url,
-    //     publicId: result.public_id,
-    //     format: result.format,
-    //     width: result.width,
-    //     height: result.height,
-    //     size: result.bytes,
-    // };
+    // Use Cloudinary if configured and installed
+    if (isCloudinaryConfigured()) {
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const cloudinaryModule = require('cloudinary');
+            const cloudinary = cloudinaryModule.v2;
 
-    // Demo: Generate placeholder URL
+            cloudinary.config({
+                cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+                api_key: process.env.CLOUDINARY_API_KEY,
+                api_secret: process.env.CLOUDINARY_API_SECRET,
+            });
+
+            const uploadOptions: Record<string, unknown> = {
+                folder: options.folder || 'people-uploads',
+                resource_type: 'image',
+            };
+
+            if (options.transformation) {
+                uploadOptions.transformation = [
+                    {
+                        width: options.transformation.width,
+                        height: options.transformation.height,
+                        crop: options.transformation.crop || 'fill',
+                    },
+                ];
+            }
+
+            const result = await cloudinary.uploader.upload(base64Data, uploadOptions);
+
+            return {
+                url: result.secure_url,
+                publicId: result.public_id,
+                format: result.format,
+                width: result.width,
+                height: result.height,
+                size: result.bytes,
+            };
+        } catch (error) {
+            console.error('Cloudinary upload failed (is cloudinary installed?):', error);
+            // Fall through to demo mode
+        }
+    }
+
+    // Demo mode: Generate placeholder URL
     const id = `img_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    const placeholderUrl = `https://via.placeholder.com/400x400.png?text=${id}`;
+    const placeholderUrl = `https://via.placeholder.com/400x400.png?text=Demo`;
 
-    console.log('📷 Image upload (demo mode):', {
-        folder: options.folder,
-        transformation: options.transformation,
-    });
+    console.log('📷 Image upload (demo mode):', options.folder);
 
     return {
         url: placeholderUrl,
@@ -93,9 +118,23 @@ export const uploadImage = async (
 };
 
 export const deleteImage = async (publicId: string): Promise<boolean> => {
-    // Production: Use Cloudinary
-    // const cloudinary = require('cloudinary').v2;
-    // await cloudinary.uploader.destroy(publicId);
+    if (isCloudinaryConfigured()) {
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const cloudinaryModule = require('cloudinary');
+            const cloudinary = cloudinaryModule.v2;
+            cloudinary.config({
+                cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+                api_key: process.env.CLOUDINARY_API_KEY,
+                api_secret: process.env.CLOUDINARY_API_SECRET,
+            });
+            await cloudinary.uploader.destroy(publicId);
+            return true;
+        } catch (error) {
+            console.error('Cloudinary delete failed:', error);
+            return false;
+        }
+    }
 
     console.log('🗑️ Image deleted (demo mode):', publicId);
     return true;
@@ -103,11 +142,18 @@ export const deleteImage = async (publicId: string): Promise<boolean> => {
 
 export const getOptimizedUrl = (
     url: string,
-    _options: { width?: number; height?: number; quality?: number } = {}
+    options: { width?: number; height?: number; quality?: number } = {}
 ): string => {
-    // Production: Transform Cloudinary URL
-    // If using Cloudinary, replace URL with transformed version
+    if (url.includes('cloudinary.com')) {
+        const transformations = [];
+        if (options.width) transformations.push(`w_${options.width}`);
+        if (options.height) transformations.push(`h_${options.height}`);
+        if (options.quality) transformations.push(`q_${options.quality}`);
 
-    // Demo: Return original URL
+        if (transformations.length > 0) {
+            return url.replace('/upload/', `/upload/${transformations.join(',')}/`);
+        }
+    }
+
     return url;
 };
