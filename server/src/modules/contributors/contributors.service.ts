@@ -240,3 +240,18 @@ export const getMyApplications = async (contributorId: string): Promise<any[]> =
         return dateB.getTime() - dateA.getTime();
     });
 };
+
+/**
+ * Submit entrance verification
+ */
+export const submitVerification = async (
+    userId: string,
+    analysis: string
+): Promise<void> => {
+    await db.collection(CONTRIBUTOR_PROFILES_COLLECTION).doc(userId).update({
+        verificationStatus: 'pending',
+        verificationAnalysis: analysis,
+        verificationSubmittedAt: new Date(),
+        updatedAt: new Date(),
+    });
+};

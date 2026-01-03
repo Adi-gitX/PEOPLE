@@ -66,6 +66,17 @@ router.post(
 );
 
 /**
+ * @route   POST /api/v1/contributors/me/verification
+ * @desc    Submit entrance verification
+ * @access  Private
+ */
+router.post(
+    '/me/verification',
+    requireAuth,
+    contributorsController.submitVerification
+);
+
+/**
  * @route   DELETE /api/v1/contributors/me/skills/:skillId
  * @desc    Remove a skill from profile
  * @access  Private

@@ -24,19 +24,35 @@ export const getUserNotifications = async (
     let query: FirebaseFirestore.Query = db
         .collection(NOTIFICATIONS_COLLECTION)
         .where('userId', '==', userId)
-        .where('isArchived', '==', false)
-        .orderBy('createdAt', 'desc');
+        .where('isArchived', '==', false);
+    // .orderBy('createdAt', 'desc'); // Removed to avoid missing index error
 
     if (options.unreadOnly) {
         query = query.where('isRead', '==', false);
     }
 
+    const snapshot = await query.get();
+    let notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+
+    // Sort in memory
+    // Sort in memory
+    notifications.sort((a, b) => {
+        // Helper to get time in ms from various possible date formats (Date, Timestamp, string)
+        const getTime = (date: any) => {
+            if (!date) return 0;
+            if (date instanceof Date) return date.getTime();
+            if (typeof date.toDate === 'function') return date.toDate().getTime(); // Firestore Timestamp
+            return new Date(date).getTime();
+        };
+
+        return getTime(b.createdAt) - getTime(a.createdAt);
+    });
+
     if (options.limit) {
-        query = query.limit(options.limit);
+        notifications = notifications.slice(0, options.limit);
     }
 
-    const snapshot = await query.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+    return notifications;
 };
 
 export const getUnreadCount = async (userId: string): Promise<number> => {

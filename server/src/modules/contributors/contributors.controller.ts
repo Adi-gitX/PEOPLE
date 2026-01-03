@@ -114,3 +114,18 @@ export const getMyApplications = async (req: Request, res: Response): Promise<vo
         sendError(res, 'Failed to get applications', 500);
     }
 };
+
+export const submitVerification = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            sendError(res, 'User ID not found in token', 401);
+            return;
+        }
+        const { analysis } = req.body;
+        await contributorsService.submitVerification(uid, analysis);
+        sendSuccess(res, { message: 'Verification submitted successfully' });
+    } catch {
+        sendError(res, 'Failed to submit verification', 500);
+    }
+};
