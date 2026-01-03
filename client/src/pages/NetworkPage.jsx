@@ -1,5 +1,4 @@
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { PublicLayout } from '../components/layout/PublicLayout';
 import { Button } from '../components/ui/Button';
 import { useContributors } from '../hooks/useApi';
 import { Users, Globe, Shield, Zap, ArrowUpRight, User } from 'lucide-react';
@@ -39,10 +38,8 @@ export default function NetworkPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
-            <Navbar />
-
-            <div className="pt-32 pb-20 px-6 max-w-7xl mx-auto">
+        <PublicLayout>
+            <div className="pt-16 pb-20 px-6 max-w-7xl mx-auto">
                 <div className="mb-12 relative">
                     <div className="absolute top-0 right-0 p-32 bg-purple-500/10 blur-[120px] rounded-full pointer-events-none" />
                     <h1 className="text-5xl font-bold tracking-tighter mb-6">The Network</h1>
@@ -180,7 +177,6 @@ export default function NetworkPage() {
                     </div>
                 </div>
             </div>
-            <Footer />
-        </div>
+        </PublicLayout>
     );
 }

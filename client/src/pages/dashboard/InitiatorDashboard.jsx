@@ -1,6 +1,6 @@
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Button } from '../../components/ui/Button';
-import { Plus, Clock, CheckCircle2, AlertCircle, Users, Wallet, Target, Loader2 } from 'lucide-react';
+import { Plus, Clock, CheckCircle2, AlertCircle, Users, Wallet, Target, Loader2, MessageSquare, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useMyMissions } from '../../hooks/useApi';
@@ -132,15 +132,58 @@ export default function InitiatorDashboard() {
                                     <div className="text-white">{mission.estimatedDurationDays} days</div>
                                 </div>
 
-                                <Link to={`/missions/${mission.id}`}>
-                                    <Button variant="outline" size="sm" className="hidden md:flex border-white/10 hover:bg-white/10 h-9">
-                                        View
-                                    </Button>
-                                </Link>
+                                <div className="flex items-center gap-2">
+                                    <Link to={`/missions/${mission.id}/applications`}>
+                                        <Button variant="outline" size="sm" className="hidden md:flex border-white/10 hover:bg-white/10 h-9">
+                                            Applications
+                                        </Button>
+                                    </Link>
+                                    <Link to={`/missions/${mission.id}`}>
+                                        <Button variant="outline" size="sm" className="hidden md:flex border-white/10 hover:bg-white/10 h-9">
+                                            View
+                                        </Button>
+                                    </Link>
+                                </div>
                             </div>
                         ))}
                     </div>
                 )}
+
+            </div>
+
+            {/* Quick Actions */}
+            <div className="mt-10">
+                <h3 className="text-lg font-bold text-white mb-4 tracking-tight">Quick Actions</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Link to="/missions/new" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3 group-hover:bg-blue-500/20 transition-colors">
+                            <Plus className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <div className="font-medium text-white text-sm">Create Mission</div>
+                        <div className="text-xs text-neutral-500 mt-1">Post a new project</div>
+                    </Link>
+                    <Link to="/network" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3 group-hover:bg-purple-500/20 transition-colors">
+                            <UserPlus className="w-5 h-5 text-purple-400" />
+                        </div>
+                        <div className="font-medium text-white text-sm">Find Talent</div>
+                        <div className="text-xs text-neutral-500 mt-1">Browse contributors</div>
+                    </Link>
+                    <Link to="/messages" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                        <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center mb-3 group-hover:bg-green-500/20 transition-colors">
+                            <MessageSquare className="w-5 h-5 text-green-400" />
+                        </div>
+                        <div className="font-medium text-white text-sm">Messages</div>
+                        <div className="text-xs text-neutral-500 mt-1">Chat with contributors</div>
+                    </Link>
+                    <Link to="/wallet" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                        <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-3 group-hover:bg-orange-500/20 transition-colors">
+                            <Wallet className="w-5 h-5 text-orange-400" />
+                        </div>
+                        <div className="font-medium text-white text-sm">Wallet</div>
+                        <div className="text-xs text-neutral-500 mt-1">Manage payments</div>
+                    </Link>
+                </div>
             </div>
         </DashboardLayout>
     );

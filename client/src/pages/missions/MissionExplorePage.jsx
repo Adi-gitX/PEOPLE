@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Navbar } from '../../components/layout/Navbar';
-import { Footer } from '../../components/layout/Footer';
+import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Button } from '../../components/ui/Button';
 import { useMissions } from '../../hooks/useApi';
 import { Search, Filter, Cpu, Database, Layout, Shield, CheckCircle2, X, Smartphone, Palette, Cloud, Code } from 'lucide-react';
@@ -89,10 +88,8 @@ export default function MissionExplorePage() {
     }, [filters.type, filters.complexity]);
 
     return (
-        <div className="min-h-screen bg-black text-white">
-            <Navbar />
-
-            <div className="pt-32 pb-20 px-6 max-w-7xl mx-auto">
+        <PublicLayout>
+            <div className="pt-16 pb-20 px-6 max-w-7xl mx-auto">
 
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
                     <div>
@@ -282,7 +279,6 @@ export default function MissionExplorePage() {
                     </div>
                 )}
             </div>
-            <Footer />
-        </div>
+        </PublicLayout>
     );
 }

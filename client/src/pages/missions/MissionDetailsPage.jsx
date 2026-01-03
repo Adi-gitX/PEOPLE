@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Navbar } from '../../components/layout/Navbar';
-import { Footer } from '../../components/layout/Footer';
+import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Button } from '../../components/ui/Button';
 import { useMission } from '../../hooks/useApi';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -54,12 +53,11 @@ export default function MissionDetailsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-black text-white">
-                <Navbar />
-                <div className="flex items-center justify-center pt-40">
+            <PublicLayout>
+                <div className="flex items-center justify-center pt-24">
                     <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
                 </div>
-            </div>
+            </PublicLayout>
         );
     }
 
@@ -80,9 +78,8 @@ export default function MissionDetailsPage() {
         };
 
         return (
-            <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black font-sans">
-                <Navbar />
-                <div className="pt-24 pb-20 px-6 max-w-[1400px] mx-auto">
+            <PublicLayout>
+                <div className="pt-8 pb-20 px-6 max-w-[1400px] mx-auto">
                     <Link to="/explore" className="inline-flex items-center text-sm text-neutral-500 hover:text-white mb-8 transition-colors">
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Back to Marketplace
@@ -95,17 +92,13 @@ export default function MissionDetailsPage() {
 
                     {renderMissionContent(mockMission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role)}
                 </div>
-                <Footer />
-            </div>
+            </PublicLayout>
         );
     }
 
     return (
-        <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black font-sans">
-            <Navbar />
-
-            <div className="pt-24 pb-20 px-6 max-w-[1400px] mx-auto">
-
+        <PublicLayout>
+            <div className="pt-8 pb-20 px-6 max-w-[1400px] mx-auto">
                 <Link to="/explore" className="inline-flex items-center text-sm text-neutral-500 hover:text-white mb-8 transition-colors">
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Marketplace
@@ -113,8 +106,7 @@ export default function MissionDetailsPage() {
 
                 {renderMissionContent(mission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role)}
             </div>
-            <Footer />
-        </div>
+        </PublicLayout>
     );
 }
 

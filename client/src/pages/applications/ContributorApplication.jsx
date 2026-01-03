@@ -13,8 +13,16 @@ export default function ContributorApplication() {
         if (!answer.trim()) return;
 
         setIsSubmitting(true);
-
-        navigate('/dashboard');
+        try {
+            await api.post('/api/v1/contributors/me/verification', { analysis: answer });
+            toast.success('Verification analysis submitted successfully');
+            navigate('/dashboard/contributor');
+        } catch (error) {
+            console.error('Failed to submit verification:', error);
+            toast.error('Failed to submit verification');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (

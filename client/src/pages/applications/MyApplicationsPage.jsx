@@ -20,9 +20,23 @@ export default function MyApplicationsPage() {
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const [verificationStatus, setVerificationStatus] = useState(null);
+
     useEffect(() => {
         fetchApplications();
+        fetchProfile();
     }, []);
+
+    const fetchProfile = async () => {
+        try {
+            const response = await api.get('/api/v1/contributors/me');
+            if (response) {
+                setVerificationStatus(response.verificationStatus);
+            }
+        } catch (error) {
+            console.error('Failed to fetch profile:', error);
+        }
+    };
 
     const fetchApplications = async () => {
         try {
@@ -48,11 +62,13 @@ export default function MyApplicationsPage() {
         }
     };
 
+    const safeApplications = Array.isArray(applications) ? applications : [];
+
     const stats = {
-        total: applications.length,
-        pending: applications.filter(a => a.status === 'pending').length,
-        accepted: applications.filter(a => a.status === 'accepted').length,
-        rejected: applications.filter(a => a.status === 'rejected').length,
+        total: safeApplications.length,
+        pending: safeApplications.filter(a => a.status === 'pending').length,
+        accepted: safeApplications.filter(a => a.status === 'accepted').length,
+        rejected: safeApplications.filter(a => a.status === 'rejected').length,
     };
 
     if (loading) {
@@ -85,108 +101,139 @@ export default function MyApplicationsPage() {
 
     return (
         <DashboardLayout>
-            <div className="p-6 md:p-8 max-w-6xl mx-auto">
+            <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold text-white">My Applications</h1>
-                        <p className="text-zinc-400 mt-1">Track the status of your mission applications</p>
+                        <h1 className="text-3xl font-bold tracking-tighter text-white">My Applications</h1>
+                        <p className="text-neutral-400 mt-1">Track the status of your mission applications</p>
                     </div>
                     <Link
                         to="/explore"
-                        className="px-4 py-2 bg-white text-black rounded font-medium hover:bg-zinc-200 transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-neutral-200 transition-colors flex items-center gap-2"
                     >
                         Browse Missions <ArrowRight className="w-4 h-4" />
                     </Link>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                        <p className="text-zinc-500 text-sm">Total Applications</p>
-                        <p className="text-2xl font-bold text-white mt-1">{stats.total}</p>
+                    <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6">
+                        <p className="text-neutral-500 text-sm font-medium">Total Applications</p>
+                        <p className="text-3xl font-bold text-white mt-2 tracking-tight">{stats.total}</p>
                     </div>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                        <p className="text-zinc-500 text-sm">Pending</p>
-                        <p className="text-2xl font-bold text-yellow-500 mt-1">{stats.pending}</p>
+                    <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6">
+                        <p className="text-neutral-500 text-sm font-medium">Pending</p>
+                        <p className="text-3xl font-bold text-yellow-500 mt-2 tracking-tight">{stats.pending}</p>
                     </div>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                        <p className="text-zinc-500 text-sm">Accepted</p>
-                        <p className="text-2xl font-bold text-green-500 mt-1">{stats.accepted}</p>
+                    <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6">
+                        <p className="text-neutral-500 text-sm font-medium">Accepted</p>
+                        <p className="text-3xl font-bold text-green-500 mt-2 tracking-tight">{stats.accepted}</p>
                     </div>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                        <p className="text-zinc-500 text-sm">Rejected</p>
-                        <p className="text-2xl font-bold text-red-500 mt-1">{stats.rejected}</p>
+                    <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6">
+                        <p className="text-neutral-500 text-sm font-medium">Rejected</p>
+                        <p className="text-3xl font-bold text-red-500 mt-2 tracking-tight">{stats.rejected}</p>
                     </div>
                 </div>
 
-                {applications.length === 0 ? (
-                    <div className="text-center py-20 bg-zinc-900 border border-zinc-800 rounded-lg">
-                        <Briefcase className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-white mb-2">No Applications Yet</h3>
-                        <p className="text-zinc-400 mb-6">Start exploring missions to find your next project</p>
+                {safeApplications.length === 0 ? (
+                    <div className="text-center py-20 bg-[#0A0A0A] border border-white/[0.08] rounded-xl">
+                        <div className="w-16 h-16 bg-white/[0.02] rounded-full flex items-center justify-center mx-auto mb-6 border border-white/[0.05]">
+                            <Briefcase className="w-8 h-8 text-neutral-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2 tracking-tight">No Applications Yet</h3>
+                        <p className="text-neutral-400 mb-8 max-w-sm mx-auto">Start exploring the marketplace to find your next mission and build your reputation.</p>
                         <Link
                             to="/explore"
-                            className="px-4 py-2 bg-white text-black rounded font-medium hover:bg-zinc-200 transition-colors inline-flex items-center gap-2"
+                            className="px-6 py-3 bg-white text-black rounded-lg font-medium hover:bg-neutral-200 transition-colors inline-flex items-center gap-2"
                         >
                             Explore Missions <ArrowRight className="w-4 h-4" />
                         </Link>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {applications.map((application) => {
+                        {/* Verification Application Card */}
+                        {(verificationStatus === 'pending' || verificationStatus === 'proof_task_submitted') && (
+                            <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 hover:border-white/[0.15] transition-all group">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <span className="text-lg font-semibold text-white tracking-tight">
+                                                Entrance Verification
+                                            </span>
+                                            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center gap-1.5">
+                                                <Clock className="w-3 h-3" />
+                                                Pending Review
+                                            </span>
+                                        </div>
+                                        <div className="text-sm text-neutral-400 font-medium">
+                                            Platform Access Request
+                                        </div>
+                                        <p className="text-xs text-neutral-500 mt-2">
+                                            Your analysis is currently under review by our team.
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button disabled className="px-4 py-2 text-sm bg-white/[0.05] text-neutral-400 border border-white/[0.05] rounded-lg cursor-not-allowed font-medium">
+                                            Under Review
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {safeApplications.map((application) => {
                             const StatusIcon = STATUS_CONFIG[application.status]?.icon || Clock;
                             const statusConfig = STATUS_CONFIG[application.status] || STATUS_CONFIG.pending;
 
                             return (
                                 <div
                                     key={application.id}
-                                    className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-zinc-700 transition-colors"
+                                    className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 hover:border-white/[0.15] transition-all group"
                                 >
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-3 mb-2">
+                                            <div className="flex items-center gap-3 mb-3">
                                                 <Link
                                                     to={`/missions/${application.missionId}`}
-                                                    className="text-lg font-semibold text-white hover:underline truncate"
+                                                    className="text-lg font-semibold text-white hover:text-blue-400 transition-colors truncate tracking-tight"
                                                 >
                                                     {application.missionTitle || 'Mission'}
                                                 </Link>
-                                                <span className={`px-2 py-1 rounded text-xs font-medium ${statusConfig.color} flex items-center gap-1`}>
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.color} border border-current/20 flex items-center gap-1.5`}>
                                                     <StatusIcon className="w-3 h-3" />
                                                     {statusConfig.label}
                                                 </span>
                                             </div>
 
-                                            <div className="flex items-center gap-4 text-sm text-zinc-400 mb-3">
-                                                <span className="flex items-center gap-1.5">
-                                                    <Calendar className="w-4 h-4" />
+                                            <div className="flex items-center gap-6 text-sm text-neutral-400 mb-4">
+                                                <span className="flex items-center gap-2">
+                                                    <Calendar className="w-4 h-4 text-neutral-500" />
                                                     Applied {new Date(application.createdAt).toLocaleDateString()}
                                                 </span>
                                                 {application.proposedTimeline && (
-                                                    <span className="flex items-center gap-1.5">
-                                                        <Clock className="w-4 h-4" />
+                                                    <span className="flex items-center gap-2">
+                                                        <Clock className="w-4 h-4 text-neutral-500" />
                                                         {application.proposedTimeline} days proposed
                                                     </span>
                                                 )}
                                             </div>
 
                                             {application.coverLetter && (
-                                                <p className="text-zinc-400 text-sm line-clamp-2">
+                                                <p className="text-neutral-500 text-sm line-clamp-2 leading-relaxed">
                                                     {application.coverLetter}
                                                 </p>
                                             )}
                                         </div>
 
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-3">
                                             <Link
                                                 to={`/missions/${application.missionId}`}
-                                                className="px-3 py-1.5 text-sm bg-zinc-800 text-white rounded hover:bg-zinc-700 transition-colors"
+                                                className="px-4 py-2 text-sm bg-white/[0.05] text-white border border-white/[0.08] rounded-lg hover:bg-white/[0.1] transition-colors font-medium"
                                             >
                                                 View Mission
                                             </Link>
                                             {application.status === 'pending' && (
                                                 <button
                                                     onClick={() => handleWithdraw(application.missionId, application.id)}
-                                                    className="px-3 py-1.5 text-sm bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors"
+                                                    className="px-4 py-2 text-sm bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors font-medium"
                                                 >
                                                     Withdraw
                                                 </button>

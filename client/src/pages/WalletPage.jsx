@@ -45,99 +45,113 @@ export default function WalletPage() {
 
     return (
         <DashboardLayout>
-            <div className="p-6 md:p-8 max-w-5xl mx-auto">
+            <div className="p-6 md:p-8 max-w-6xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold text-white">Wallet</h1>
-                        <p className="text-zinc-400 mt-1">Manage your earnings and payments</p>
+                        <h1 className="text-3xl font-bold tracking-tighter text-white">Wallet</h1>
+                        <p className="text-neutral-400 mt-1">Manage your earnings and payments</p>
                     </div>
                 </div>
 
                 {loading ? (
                     <div className="grid md:grid-cols-3 gap-6 mb-8">
                         {[...Array(3)].map((_, i) => (
-                            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 animate-pulse">
-                                <div className="h-4 w-20 bg-zinc-800 rounded mb-4" />
-                                <div className="h-8 w-32 bg-zinc-800 rounded" />
+                            <div key={i} className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 animate-pulse">
+                                <div className="h-4 w-20 bg-white/[0.05] rounded mb-4" />
+                                <div className="h-8 w-32 bg-white/[0.05] rounded" />
                             </div>
                         ))}
                     </div>
                 ) : (
                     <div className="grid md:grid-cols-3 gap-6 mb-8">
-                        <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg p-6">
-                            <div className="flex items-center gap-2 text-green-400 mb-2">
-                                <Wallet className="w-5 h-5" />
-                                <span className="text-sm font-medium">Available Balance</span>
+                        <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-8 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 blur-[50px] rounded-full group-hover:bg-green-500/20 transition-all duration-500" />
+                            <div className="relative">
+                                <div className="flex items-center gap-2 text-green-400 mb-4">
+                                    <div className="p-2 bg-green-500/10 rounded-lg">
+                                        <Wallet className="w-5 h-5" />
+                                    </div>
+                                    <span className="text-sm font-medium tracking-wide">Available Balance</span>
+                                </div>
+                                <p className="text-4xl font-bold text-white tracking-tight">${balance.available.toLocaleString()}</p>
+                                <Button
+                                    onClick={handleWithdraw}
+                                    className="mt-6 w-full bg-green-500 hover:bg-green-600 text-white border-0 shadow-lg shadow-green-500/20"
+                                    disabled={balance.available === 0}
+                                >
+                                    Withdraw Funds
+                                </Button>
                             </div>
-                            <p className="text-3xl font-bold text-white">${balance.available.toLocaleString()}</p>
-                            <Button
-                                onClick={handleWithdraw}
-                                className="mt-4 w-full bg-green-500 hover:bg-green-600 text-white"
-                                disabled={balance.available === 0}
-                            >
-                                Withdraw
-                            </Button>
                         </div>
 
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-                            <div className="flex items-center gap-2 text-yellow-400 mb-2">
-                                <Clock className="w-5 h-5" />
-                                <span className="text-sm font-medium">Pending</span>
+                        <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-8 hover:border-white/[0.15] transition-all">
+                            <div className="flex items-center gap-2 text-yellow-500 mb-4">
+                                <div className="p-2 bg-yellow-500/10 rounded-lg">
+                                    <Clock className="w-5 h-5" />
+                                </div>
+                                <span className="text-sm font-medium tracking-wide">Pending</span>
                             </div>
-                            <p className="text-3xl font-bold text-white">${balance.pending.toLocaleString()}</p>
-                            <p className="text-xs text-zinc-500 mt-2">In escrow for active missions</p>
+                            <p className="text-4xl font-bold text-white tracking-tight">${balance.pending.toLocaleString()}</p>
+                            <p className="text-sm text-neutral-500 mt-2">In escrow for active missions</p>
                         </div>
 
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-                            <div className="flex items-center gap-2 text-blue-400 mb-2">
-                                <TrendingUp className="w-5 h-5" />
-                                <span className="text-sm font-medium">Total Earned</span>
+                        <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-8 hover:border-white/[0.15] transition-all">
+                            <div className="flex items-center gap-2 text-blue-400 mb-4">
+                                <div className="p-2 bg-blue-500/10 rounded-lg">
+                                    <TrendingUp className="w-5 h-5" />
+                                </div>
+                                <span className="text-sm font-medium tracking-wide">Total Earned</span>
                             </div>
-                            <p className="text-3xl font-bold text-white">${balance.total.toLocaleString()}</p>
-                            <p className="text-xs text-zinc-500 mt-2">Lifetime earnings</p>
+                            <p className="text-4xl font-bold text-white tracking-tight">${balance.total.toLocaleString()}</p>
+                            <p className="text-sm text-neutral-500 mt-2">Lifetime earnings</p>
                         </div>
                     </div>
                 )}
 
-                <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-                    <div className="p-4 border-b border-zinc-800">
-                        <h2 className="font-semibold text-white">Transaction History</h2>
+                <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl overflow-hidden">
+                    <div className="p-6 border-b border-white/[0.08] flex items-center justify-between">
+                        <h2 className="text-lg font-bold tracking-tight text-white">Transaction History</h2>
+                        <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">
+                            View All
+                        </Button>
                     </div>
 
                     {loading ? (
-                        <div className="p-4 space-y-4">
+                        <div className="p-6 space-y-4">
                             {[...Array(5)].map((_, i) => (
                                 <SkeletonCard key={i} />
                             ))}
                         </div>
                     ) : transactions.length === 0 ? (
-                        <div className="p-12 text-center">
-                            <DollarSign className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-white mb-2">No Transactions Yet</h3>
-                            <p className="text-zinc-500">Your payment history will appear here</p>
+                        <div className="p-16 text-center">
+                            <div className="w-16 h-16 bg-white/[0.02] border border-white/[0.05] rounded-full flex items-center justify-center mx-auto mb-6">
+                                <DollarSign className="w-8 h-8 text-neutral-500" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2 tracking-tight">No Transactions Yet</h3>
+                            <p className="text-neutral-500 max-w-sm mx-auto">Your payment history will appear here once you start completing missions.</p>
                         </div>
                     ) : (
-                        <div className="divide-y divide-zinc-800">
+                        <div className="divide-y divide-white/[0.05]">
                             {transactions.map((tx) => {
                                 const typeConfig = TYPE_LABELS[tx.type] || TYPE_LABELS.release;
                                 const Icon = typeConfig.icon;
 
                                 return (
-                                    <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-zinc-800/30 transition-colors">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`p-2 rounded-lg bg-zinc-800 ${typeConfig.color}`}>
+                                    <div key={tx.id} className="p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
+                                        <div className="flex items-center gap-5">
+                                            <div className={`p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] group-hover:border-white/[0.1] transition-colors ${typeConfig.color}`}>
                                                 <Icon className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <p className="font-medium text-white">{typeConfig.label}</p>
-                                                <p className="text-sm text-zinc-500">{tx.description}</p>
+                                                <p className="font-semibold text-white tracking-tight">{typeConfig.label}</p>
+                                                <p className="text-sm text-neutral-500 mt-0.5">{tx.description}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className={`font-semibold ${tx.type === 'release' ? 'text-green-500' : 'text-white'}`}>
+                                            <p className={`font-bold tracking-tight text-lg ${tx.type === 'release' ? 'text-green-500' : 'text-white'}`}>
                                                 {tx.type === 'release' ? '+' : ''}${tx.amount?.toLocaleString()}
                                             </p>
-                                            <p className="text-xs text-zinc-500">
+                                            <p className="text-xs text-neutral-600 font-medium">
                                                 {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : ''}
                                             </p>
                                         </div>

@@ -98,23 +98,28 @@ export default function MissionApplicationsPage() {
             <div className="p-6 md:p-8 max-w-5xl mx-auto">
                 <Link
                     to="/dashboard/initiator"
-                    className="inline-flex items-center gap-2 text-zinc-400 hover:text-white mb-6 transition-colors"
+                    className="inline-flex items-center gap-2 text-neutral-400 hover:text-white mb-8 transition-colors text-sm font-medium"
                 >
                     <ArrowLeft className="w-4 h-4" /> Back to Dashboard
                 </Link>
 
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-white">Applications for Mission</h1>
+                <div className="mb-10">
+                    <h1 className="text-3xl font-bold text-white tracking-tighter">Mission Applications</h1>
                     {mission && (
-                        <p className="text-zinc-400 mt-1">{mission.title}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="text-neutral-400">for</span>
+                            <span className="text-white font-medium">{mission.title}</span>
+                        </div>
                     )}
                 </div>
 
                 {applications.length === 0 ? (
-                    <div className="text-center py-20 bg-zinc-900 border border-zinc-800 rounded-lg">
-                        <User className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-white mb-2">No Applications Yet</h3>
-                        <p className="text-zinc-400">Contributors haven't applied to this mission yet.</p>
+                    <div className="text-center py-24 bg-[#0A0A0A] border border-white/[0.08] rounded-xl">
+                        <div className="w-16 h-16 bg-white/[0.02] border border-white/[0.05] rounded-full flex items-center justify-center mx-auto mb-6">
+                            <User className="w-8 h-8 text-neutral-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2 tracking-tight">No Applications Yet</h3>
+                        <p className="text-neutral-500 max-w-sm mx-auto">Top talent will start applying soon. Share your mission to attract more contributors.</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -126,69 +131,71 @@ export default function MissionApplicationsPage() {
                             return (
                                 <div
                                     key={application.id}
-                                    className="bg-zinc-900 border border-zinc-800 rounded-lg p-6"
+                                    className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 transition-all hover:border-white/[0.15] group"
                                 >
-                                    <div className="flex items-start justify-between gap-4">
+                                    <div className="flex items-start justify-between gap-6">
                                         <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center">
-                                                    <User className="w-5 h-5 text-zinc-400" />
+                                            <div className="flex items-center gap-4 mb-4">
+                                                <div className="w-12 h-12 bg-white/[0.03] border border-white/[0.05] rounded-xl flex items-center justify-center shrink-0">
+                                                    <User className="w-6 h-6 text-neutral-400" />
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold text-white">
+                                                    <p className="text-lg font-bold text-white tracking-tight">
                                                         {application.contributorName || 'Anonymous'}
                                                     </p>
-                                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusConfig.color} inline-flex items-center gap-1`}>
-                                                        <StatusIcon className="w-3 h-3" />
-                                                        {statusConfig.label}
-                                                    </span>
+                                                    <div className="flex items-center gap-3 mt-1">
+                                                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.color} border border-current/10 inline-flex items-center gap-1.5`}>
+                                                            <StatusIcon className="w-3 h-3" />
+                                                            {statusConfig.label}
+                                                        </span>
+                                                        <span className="text-xs text-neutral-500 flex items-center gap-1">
+                                                            <Calendar className="w-3 h-3" />
+                                                            {new Date(application.createdAt).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4 text-sm text-zinc-400 mb-4">
-                                                <span className="flex items-center gap-1.5">
-                                                    <Calendar className="w-4 h-4" />
-                                                    Applied {new Date(application.createdAt).toLocaleDateString()}
-                                                </span>
-                                                {application.proposedTimeline && (
-                                                    <span className="flex items-center gap-1.5">
-                                                        <Clock className="w-4 h-4" />
-                                                        {application.proposedTimeline} days timeline
-                                                    </span>
+                                            <div className="grid md:grid-cols-2 gap-6 pl-16">
+                                                {application.coverLetter && (
+                                                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-lg p-4">
+                                                        <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-2 flex items-center gap-1.5">
+                                                            <FileText className="w-3 h-3" /> Cover Letter
+                                                        </p>
+                                                        <p className="text-neutral-300 text-sm leading-relaxed">{application.coverLetter}</p>
+                                                    </div>
+                                                )}
+
+                                                {application.proposedApproach && (
+                                                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-lg p-4">
+                                                        <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-2">Proposed Approach</p>
+                                                        <p className="text-neutral-300 text-sm leading-relaxed">{application.proposedApproach}</p>
+                                                    </div>
                                                 )}
                                             </div>
 
-                                            {application.coverLetter && (
-                                                <div className="mb-4">
-                                                    <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1 flex items-center gap-1">
-                                                        <FileText className="w-3 h-3" /> Cover Letter
-                                                    </p>
-                                                    <p className="text-zinc-300 text-sm">{application.coverLetter}</p>
-                                                </div>
-                                            )}
-
-                                            {application.proposedApproach && (
-                                                <div>
-                                                    <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">Proposed Approach</p>
-                                                    <p className="text-zinc-300 text-sm">{application.proposedApproach}</p>
+                                            {application.proposedTimeline && (
+                                                <div className="pl-16 mt-4 flex items-center gap-2 text-sm text-neutral-400">
+                                                    <Clock className="w-4 h-4" />
+                                                    <span>Proposed Timeline: <span className="text-white font-medium">{application.proposedTimeline} days</span></span>
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className="flex flex-col gap-2">
+                                        <div className="flex flex-col gap-3 min-w-[140px]">
                                             {application.status === 'pending' && (
                                                 <>
                                                     <button
                                                         onClick={() => handleStatusUpdate(application.id, 'shortlisted')}
                                                         disabled={isProcessing}
-                                                        className="px-3 py-1.5 text-sm bg-blue-500/10 text-blue-500 rounded hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                                                        className="px-4 py-2 text-sm bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition-all font-medium disabled:opacity-50"
                                                     >
                                                         Shortlist
                                                     </button>
                                                     <button
                                                         onClick={() => handleStatusUpdate(application.id, 'rejected')}
                                                         disabled={isProcessing}
-                                                        className="px-3 py-1.5 text-sm bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                                        className="px-4 py-2 text-sm bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-all font-medium disabled:opacity-50"
                                                     >
                                                         Reject
                                                     </button>
@@ -202,24 +209,31 @@ export default function MissionApplicationsPage() {
                                                             handleAssign(application.contributorId);
                                                         }}
                                                         disabled={isProcessing}
-                                                        className="px-3 py-1.5 text-sm bg-green-500/10 text-green-500 rounded hover:bg-green-500/20 transition-colors disabled:opacity-50 flex items-center gap-1"
+                                                        className="px-4 py-2 text-sm bg-green-500 text-black rounded-lg hover:bg-green-400 transition-all font-bold disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
                                                     >
-                                                        <UserPlus className="w-3 h-3" />
+                                                        <UserPlus className="w-4 h-4" />
                                                         Accept & Assign
                                                     </button>
                                                     <button
                                                         onClick={() => handleStatusUpdate(application.id, 'rejected')}
                                                         disabled={isProcessing}
-                                                        className="px-3 py-1.5 text-sm bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                                        className="px-4 py-2 text-sm bg-white/[0.05] text-neutral-400 border border-white/[0.1] rounded-lg hover:bg-white/[0.1] hover:text-white transition-all font-medium disabled:opacity-50"
                                                     >
                                                         Reject
                                                     </button>
                                                 </>
                                             )}
                                             {application.status === 'accepted' && (
-                                                <span className="px-3 py-1.5 text-sm bg-green-500/10 text-green-500 rounded">
-                                                    ✓ Assigned
-                                                </span>
+                                                <div className="px-4 py-3 text-sm bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg flex items-center justify-center gap-2 font-medium">
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                    Assigned
+                                                </div>
+                                            )}
+                                            {application.status === 'rejected' && (
+                                                <div className="px-4 py-3 text-sm bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg flex items-center justify-center gap-2 font-medium">
+                                                    <XCircle className="w-4 h-4" />
+                                                    Rejected
+                                                </div>
                                             )}
                                         </div>
                                     </div>
