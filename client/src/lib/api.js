@@ -39,7 +39,9 @@ const apiRequest = async (endpoint, options = {}) => {
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.message || data.error || 'API request failed');
+        const error = new Error(data.message || data.error || 'API request failed');
+        error.details = data.details; // Pass validation details through
+        throw error;
     }
 
     return data;

@@ -34,7 +34,7 @@ export default function NotificationsPage() {
     const fetchNotifications = async () => {
         try {
             const response = await api.get('/api/v1/notifications');
-            setNotifications(response.notifications || []);
+            setNotifications(response.data?.notifications || []);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
             toast.error('Failed to load notifications');
@@ -155,8 +155,8 @@ export default function NotificationsPage() {
 
                                     <div className="flex items-start gap-5">
                                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${!notification.isRead
-                                                ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
-                                                : 'bg-white/[0.03] border-white/[0.08] text-neutral-500'
+                                            ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                                            : 'bg-white/[0.03] border-white/[0.08] text-neutral-500'
                                             }`}>
                                             <Icon className="w-5 h-5" />
                                         </div>

@@ -30,8 +30,8 @@ export default function MyApplicationsPage() {
     const fetchProfile = async () => {
         try {
             const response = await api.get('/api/v1/contributors/me');
-            if (response) {
-                setVerificationStatus(response.verificationStatus);
+            if (response?.data) {
+                setVerificationStatus(response.data.verificationStatus);
             }
         } catch (error) {
             console.error('Failed to fetch profile:', error);
@@ -41,7 +41,7 @@ export default function MyApplicationsPage() {
     const fetchApplications = async () => {
         try {
             const response = await api.get('/api/v1/contributors/me/applications');
-            setApplications(response.applications || response || []);
+            setApplications(response.data?.applications || response.data || []);
         } catch (error) {
             console.error('Failed to fetch applications:', error);
             toast.error('Failed to load applications');

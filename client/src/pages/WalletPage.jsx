@@ -28,8 +28,8 @@ export default function WalletPage() {
                 api.get('/api/v1/payments/balance'),
                 api.get('/api/v1/payments/history'),
             ]);
-            setBalance(balanceRes);
-            setTransactions(historyRes.transactions || []);
+            setBalance(balanceRes.data || { available: 0, pending: 0, total: 0 });
+            setTransactions(historyRes.data?.transactions || []);
         } catch (error) {
             console.error('Failed to fetch wallet data:', error);
         } finally {

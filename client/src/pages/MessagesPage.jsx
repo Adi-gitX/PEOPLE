@@ -47,7 +47,7 @@ export default function MessagesPage() {
     const fetchConversations = async () => {
         try {
             const response = await api.get('/api/v1/conversations');
-            setConversations(response.conversations || []);
+            setConversations(response.data?.conversations || []);
         } catch (error) {
             console.error('Failed to fetch conversations:', error);
             toast.error('Failed to load conversations');
@@ -60,7 +60,7 @@ export default function MessagesPage() {
         setMessagesLoading(true);
         try {
             const response = await api.get(`/api/v1/conversations/${conversationId}/messages`);
-            setMessages(response.messages || []);
+            setMessages(response.data?.messages || []);
         } catch (error) {
             console.error('Failed to fetch messages:', error);
         } finally {
@@ -77,7 +77,7 @@ export default function MessagesPage() {
             const response = await api.post(`/api/v1/conversations/${selectedConversation.id}/messages`, {
                 content: newMessage.trim()
             });
-            setMessages(prev => [...prev, response.message]);
+            setMessages(prev => [...prev, response.data.message]);
             setNewMessage('');
         } catch (error) {
             toast.error('Failed to send message');
@@ -138,8 +138,8 @@ export default function MessagesPage() {
                                     key={conversation.id}
                                     onClick={() => setSelectedConversation(conversation)}
                                     className={`w-full p-3 text-left rounded-xl transition-all duration-200 group relative overflow-hidden ${selectedConversation?.id === conversation.id
-                                            ? 'bg-white text-black shadow-lg shadow-white/5'
-                                            : 'text-zinc-400 hover:bg-white/[0.03] hover:text-white'
+                                        ? 'bg-white text-black shadow-lg shadow-white/5'
+                                        : 'text-zinc-400 hover:bg-white/[0.03] hover:text-white'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3 relative z-10">
@@ -237,8 +237,8 @@ export default function MessagesPage() {
                                                     </div>
                                                 )}
                                                 <div className={`max-w-[70%] group relative ${isOwn
-                                                        ? 'bg-white text-black rounded-2xl rounded-tr-none'
-                                                        : 'bg-zinc-800/80 backdrop-blur-sm border border-white/10 text-white rounded-2xl rounded-tl-none'
+                                                    ? 'bg-white text-black rounded-2xl rounded-tr-none'
+                                                    : 'bg-zinc-800/80 backdrop-blur-sm border border-white/10 text-white rounded-2xl rounded-tl-none'
                                                     } p-4 shadow-sm`}>
                                                     <p className="text-[15px] leading-relaxed">{message.content}</p>
                                                     <span className={`text-[10px] absolute -bottom-5 ${isOwn ? 'right-1' : 'left-1'} text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity`}>

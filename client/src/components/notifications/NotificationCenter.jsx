@@ -51,7 +51,7 @@ export function NotificationCenter() {
     const fetchNotifications = async () => {
         try {
             const response = await api.get('/api/v1/notifications');
-            setNotifications(response.notifications || []);
+            setNotifications(response.data?.notifications || []);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         } finally {
@@ -62,7 +62,7 @@ export function NotificationCenter() {
     const fetchUnreadCount = async () => {
         try {
             const response = await api.get('/api/v1/notifications/count');
-            setUnreadCount(response.count || 0);
+            setUnreadCount(response.data?.count || 0);
         } catch (error) {
             console.error('Failed to fetch unread count:', error);
         }

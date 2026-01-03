@@ -53,7 +53,7 @@ const adminNavItems = [
 
 export function DashboardLayout({ children }) {
     const location = useLocation();
-    const { role, user, logout } = useAuthStore();
+    const { role, user, logout, setRole } = useAuthStore();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
@@ -158,7 +158,11 @@ export function DashboardLayout({ children }) {
                         {role !== 'admin' && (
                             <Link
                                 to={role === 'initiator' ? '/dashboard/contributor' : '/dashboard/initiator'}
-                                onClick={() => setSidebarOpen(false)}
+                                onClick={() => {
+                                    const newRole = role === 'initiator' ? 'contributor' : 'initiator';
+                                    setRole(newRole);
+                                    setSidebarOpen(false);
+                                }}
                                 className="flex items-center justify-between px-4 py-3 rounded-lg text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.05] transition-all border border-transparent hover:border-white/[0.05] mb-2"
                             >
                                 <span className="flex items-center gap-2">
