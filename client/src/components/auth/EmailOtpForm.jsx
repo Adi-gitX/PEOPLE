@@ -19,7 +19,7 @@ const ACTION_CODE_SETTINGS = {
 
 export function EmailOtpForm({ mode = 'login' }) {
     const [email, setEmail] = useState('');
-    const [step, setStep] = useState('email'); // 'email', 'sent', or 'details'
+    const [step, setStep] = useState('email');
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         fullName: '',
@@ -27,19 +27,16 @@ export function EmailOtpForm({ mode = 'login' }) {
     });
     const navigate = useNavigate();
     const processedRef = useRef(false);
-    const { setAuthState, refreshProfile } = useAuthStore();
+    const { setAuthState } = useAuthStore();
 
-    // Check if returning from email link
     useEffect(() => {
         const handleEmailLink = async () => {
-            // Prevent double processing
             if (processedRef.current) return;
             if (!isSignInWithEmailLink(auth, window.location.href)) return;
 
             processedRef.current = true;
             setIsLoading(true);
 
-            // Get email from localStorage
             let storedEmail = window.localStorage.getItem('emailForSignIn');
 
             if (!storedEmail) {
@@ -54,26 +51,16 @@ export function EmailOtpForm({ mode = 'login' }) {
             }
 
             try {
-                console.log('[EmailOtp] Signing in with email link...');
                 const result = await signInWithEmailLink(auth, storedEmail, window.location.href);
                 window.localStorage.removeItem('emailForSignIn');
 
-                console.log('[EmailOtp] Firebase sign-in successful, checking backend...');
-
-                // Force refresh ID token
                 await result.user.getIdToken(true);
-
-                // Wait a moment for auth to propagate
                 await new Promise(r => setTimeout(r, 500));
 
-                // Check if user exists in our database
                 try {
                     const response = await api.get('/api/v1/users/me');
                     const userData = response.data;
 
-                    console.log('[EmailOtp] Existing user found, role:', userData?.user?.primaryRole);
-
-                    // Set auth state immediately
                     setAuthState(
                         {
                             uid: result.user.uid,
@@ -86,24 +73,17 @@ export function EmailOtpForm({ mode = 'login' }) {
                     );
 
                     toast.success('Welcome back!');
-
-                    // Clean up URL first
                     window.history.replaceState({}, document.title, '/login');
 
-                    // Navigate based on role
                     const dashboardPath = userData?.user?.primaryRole === 'initiator'
                         ? '/dashboard/initiator'
                         : '/dashboard/contributor';
 
-                    console.log('[EmailOtp] Navigating to:', dashboardPath);
                     navigate(dashboardPath, { replace: true });
 
-                } catch (err) {
-                    // New user - register with stored role info
+                } catch {
                     const storedRole = window.localStorage.getItem('signupRole') || 'contributor';
                     const storedName = window.localStorage.getItem('signupName') || result.user.displayName || 'User';
-
-                    console.log('[EmailOtp] New user, registering with role:', storedRole);
 
                     try {
                         const registerResponse = await api.post('/api/v1/users/register', {
@@ -112,12 +92,9 @@ export function EmailOtpForm({ mode = 'login' }) {
                             role: storedRole,
                         });
 
-                        console.log('[EmailOtp] Registration successful');
-
                         window.localStorage.removeItem('signupRole');
                         window.localStorage.removeItem('signupName');
 
-                        // Set auth state immediately
                         setAuthState(
                             {
                                 uid: result.user.uid,
@@ -130,27 +107,21 @@ export function EmailOtpForm({ mode = 'login' }) {
                         );
 
                         toast.success('Account created successfully!');
-
-                        // Clean up URL first
                         window.history.replaceState({}, document.title, '/login');
 
-                        // Navigate to dashboard
                         const dashboardPath = storedRole === 'initiator'
                             ? '/dashboard/initiator'
                             : '/dashboard/contributor';
 
-                        console.log('[EmailOtp] Navigating new user to:', dashboardPath);
                         navigate(dashboardPath, { replace: true });
 
-                    } catch (regError) {
-                        console.error('[EmailOtp] Registration failed:', regError);
+                    } catch {
                         toast.error('Failed to create account. Please try again.');
                         setIsLoading(false);
                         processedRef.current = false;
                     }
                 }
             } catch (error) {
-                console.error('[EmailOtp] Error:', error);
                 toast.error(error.message || 'Failed to sign in');
                 setIsLoading(false);
                 processedRef.current = false;
@@ -159,7 +130,7 @@ export function EmailOtpForm({ mode = 'login' }) {
         };
 
         handleEmailLink();
-    }, [navigate, setAuthState, refreshProfile]);
+    }, [navigate, setAuthState]);
 
     const handleSendLink = async (e) => {
         e.preventDefault();
@@ -169,7 +140,6 @@ export function EmailOtpForm({ mode = 'login' }) {
             return;
         }
 
-        // Validate name for signup
         if (mode === 'signup' && !formData.fullName.trim()) {
             toast.error('Please enter your full name');
             return;
@@ -177,24 +147,18 @@ export function EmailOtpForm({ mode = 'login' }) {
 
         setIsLoading(true);
         try {
-            // Store email for when user returns
             window.localStorage.setItem('emailForSignIn', email);
 
-            // Store signup info if in signup mode
             if (mode === 'signup') {
                 window.localStorage.setItem('signupRole', formData.role);
                 window.localStorage.setItem('signupName', formData.fullName || 'User');
-                console.log('[EmailOtp] Stored signup info - Role:', formData.role, 'Name:', formData.fullName);
             }
 
-            // Send the magic link
             await sendSignInLinkToEmail(auth, email, ACTION_CODE_SETTINGS);
 
             setStep('sent');
             toast.success('Sign-in link sent to your email!');
         } catch (error) {
-            console.error('[EmailOtp] Send link error:', error);
-
             if (error.code === 'auth/invalid-email') {
                 toast.error('Invalid email address');
             } else if (error.code === 'auth/too-many-requests') {

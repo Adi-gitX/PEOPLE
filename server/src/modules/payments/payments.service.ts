@@ -196,8 +196,6 @@ export const createCheckoutSession = async (
         return { sessionUrl: session.url || successUrl };
     }
 
-    // Demo mode: Create deposit immediately
-    console.log('⚠️ Stripe not configured, using demo mode');
     await createEscrowDeposit(missionId, initiatorId, amount);
     return { sessionUrl: successUrl };
 };

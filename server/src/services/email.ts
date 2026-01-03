@@ -14,13 +14,10 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // Initialize Resend client
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
-// Create Gmail transporter as fallback
 const createGmailTransporter = () => {
   if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
-    console.log('📧 Gmail credentials not found. GMAIL_USER:', !!GMAIL_USER, 'GMAIL_APP_PASSWORD:', !!GMAIL_APP_PASSWORD);
     return null;
   }
-  console.log('📧 Gmail SMTP configured for:', GMAIL_USER);
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -31,14 +28,6 @@ const createGmailTransporter = () => {
 };
 
 const gmailTransporter = createGmailTransporter();
-
-// Log provider status on startup
-console.log('═══════════════════════════════════════════════════════════');
-console.log('  📧 EMAIL PROVIDERS CONFIGURED');
-console.log('═══════════════════════════════════════════════════════════');
-console.log(`  Resend (Primary):   ${resend ? '✅ Ready' : '❌ No API key'}`);
-console.log(`  Gmail (Fallback):   ${gmailTransporter ? '✅ Ready' : '❌ No credentials'}`);
-console.log('═══════════════════════════════════════════════════════════');
 
 interface SendResult {
   success: boolean;
@@ -140,7 +129,6 @@ const sendViaResend = async (
       return { success: false, error: error.message };
     }
 
-    console.log('📧 ✅ Sent via Resend to:', to, 'ID:', data?.id);
     return { success: true, messageId: data?.id, provider: 'resend' };
   } catch (error: any) {
     console.error('📧 Resend exception:', error.message);
@@ -167,7 +155,6 @@ const sendViaGmail = async (
     };
 
     const info = await gmailTransporter.sendMail(mailOptions);
-    console.log('📧 ✅ Sent via Gmail to:', to, 'ID:', info.messageId);
     return { success: true, messageId: info.messageId, provider: 'gmail' };
   } catch (error: any) {
     console.error('📧 Gmail error:', error.message);
@@ -187,10 +174,8 @@ export const sendEmail = async (
     if (resendResult.success) {
       return resendResult;
     }
-    console.log('📧 Resend failed, falling back to Gmail...');
   }
 
-  // Fallback to Gmail
   if (gmailTransporter) {
     const gmailResult = await sendViaGmail(to, subject, html);
     if (gmailResult.success) {
@@ -198,34 +183,14 @@ export const sendEmail = async (
     }
   }
 
-  // Dev mode fallback
   if (NODE_ENV === 'development') {
-    console.log('');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('  📧 EMAIL (DEV MODE - No provider available)');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log(`  To: ${to}`);
-    console.log(`  Subject: ${subject}`);
-    console.log('  Add RESEND_API_KEY or GMAIL credentials to .env');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('');
     return { success: true, messageId: `dev-${Date.now()}`, provider: 'dev' };
   }
 
   return { success: false, error: 'No email provider available' };
 };
 
-// OTP Email Template
 export const sendOtpEmail = async (email: string, otp: string): Promise<SendResult> => {
-  // Always log OTP in development
-  console.log('');
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('  🔐 OTP VERIFICATION CODE');
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log(`  Email: ${email}`);
-  console.log(`  Code:  ${otp}`);
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('');
 
   const content = `
         <!-- Icon -->

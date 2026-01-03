@@ -8,14 +8,12 @@ export const AuthGuard = ({ children, requireRole = null }) => {
     const [isChecking, setIsChecking] = useState(true);
 
     useEffect(() => {
-        // If authenticated but no role, try to refresh profile
         const checkRole = async () => {
             if (isAuthenticated && !role && !isLoading) {
-                console.log('[AuthGuard] Authenticated but no role, refreshing profile...');
                 try {
                     await refreshProfile();
-                } catch (e) {
-                    console.error('[AuthGuard] Failed to refresh profile:', e);
+                } catch {
+                    // Silent fail
                 }
             }
             setIsChecking(false);
@@ -26,7 +24,6 @@ export const AuthGuard = ({ children, requireRole = null }) => {
         }
     }, [isAuthenticated, role, isLoading, refreshProfile]);
 
-    // Show loading while checking auth state
     if (isLoading || isChecking) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-black">
@@ -38,17 +35,12 @@ export const AuthGuard = ({ children, requireRole = null }) => {
         );
     }
 
-    // Redirect to login if not authenticated
     if (!isAuthenticated) {
-        console.log('[AuthGuard] Not authenticated, redirecting to login');
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // Handle role requirements
     if (requireRole && role !== requireRole) {
-        // If role is null (profile fetch failed), show error
         if (!role) {
-            console.log('[AuthGuard] Role is null, showing error');
             return (
                 <div className="min-h-screen flex items-center justify-center bg-black text-white p-4">
                     <div className="max-w-md text-center space-y-4">
@@ -75,8 +67,6 @@ export const AuthGuard = ({ children, requireRole = null }) => {
             );
         }
 
-        // Redirect to correct dashboard based on role
-        console.log('[AuthGuard] Role mismatch, redirecting. Required:', requireRole, 'Actual:', role);
         const redirectPath = role === 'initiator'
             ? '/dashboard/initiator'
             : '/dashboard/contributor';
@@ -89,7 +79,6 @@ export const AuthGuard = ({ children, requireRole = null }) => {
 export const GuestGuard = ({ children }) => {
     const { isAuthenticated, isLoading, role } = useAuthStore();
 
-    // Show loading while checking auth state
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-black">
@@ -98,18 +87,11 @@ export const GuestGuard = ({ children }) => {
         );
     }
 
-    // If authenticated, redirect to dashboard
     if (isAuthenticated && role) {
-        console.log('[GuestGuard] Already authenticated with role:', role, '- redirecting');
         const redirectPath = role === 'initiator'
             ? '/dashboard/initiator'
             : '/dashboard/contributor';
         return <Navigate to={redirectPath} replace />;
-    }
-
-    // If authenticated but no role, allow through (might be completing signup)
-    if (isAuthenticated && !role) {
-        console.log('[GuestGuard] Authenticated but no role, allowing through');
     }
 
     return children;

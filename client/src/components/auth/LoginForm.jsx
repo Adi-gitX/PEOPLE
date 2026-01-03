@@ -42,25 +42,19 @@ export function LoginForm() {
 
         try {
             await signIn(email, password);
-
-            // Wait a moment for Firebase to propagate
             await new Promise(r => setTimeout(r, 300));
 
-            // Refresh profile to get role
             const userData = await refreshProfile();
             const role = userData?.user?.primaryRole;
 
             toast.success('Welcome back!');
 
-            // Navigate to correct dashboard based on role
             const dashboardPath = role === 'initiator'
                 ? '/dashboard/initiator'
                 : '/dashboard/contributor';
 
-            console.log('[LoginForm] Navigating to:', dashboardPath);
             navigate(dashboardPath, { replace: true });
         } catch (error) {
-            console.error('Login error:', error);
             const message = getErrorMessage(error.code);
             toast.error(message);
 
@@ -83,7 +77,6 @@ export function LoginForm() {
             await resetPassword(email);
             toast.success('Password reset email sent! Check your inbox.');
         } catch (error) {
-            console.error('Reset password error:', error);
             if (error.code === 'auth/user-not-found') {
                 toast.error('No account found with this email.');
             } else {
@@ -98,11 +91,8 @@ export function LoginForm() {
         setIsLoading(true);
         try {
             await signInWithGoogle();
-
-            // Wait for auth to propagate
             await new Promise(r => setTimeout(r, 500));
 
-            // Refresh profile to get role
             const userData = await refreshProfile();
             const role = userData?.user?.primaryRole;
 
@@ -112,10 +102,8 @@ export function LoginForm() {
                 ? '/dashboard/initiator'
                 : '/dashboard/contributor';
 
-            console.log('[LoginForm] Google - Navigating to:', dashboardPath);
             navigate(dashboardPath, { replace: true });
         } catch (error) {
-            console.error('Google login error:', error);
             if (error.code === 'auth/popup-closed-by-user') {
                 toast.info('Sign-in cancelled');
             } else {

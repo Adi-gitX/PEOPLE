@@ -12,18 +12,15 @@ export default function AuthPage() {
     const navigate = useNavigate();
     const { isAuthenticated, role, isLoading } = useAuthStore();
 
-    // Determine initial mode from URL
     const urlMode = searchParams.get('mode');
     const isEmailLink = searchParams.get('emailLink') === 'true';
     const initialMode = urlMode === 'signup' || window.location.pathname === '/signup' ? 'signup' : 'login';
 
     const [mode, setMode] = useState(initialMode);
-    const [authMethod, setAuthMethod] = useState('magic'); // 'magic' or 'password'
+    const [authMethod, setAuthMethod] = useState('magic');
 
-    // Redirect if already authenticated (unless processing email link)
     useEffect(() => {
         if (!isLoading && isAuthenticated && role && !isEmailLink) {
-            console.log('[AuthPage] Already authenticated, redirecting to dashboard');
             const dashboardPath = role === 'initiator'
                 ? '/dashboard/initiator'
                 : '/dashboard/contributor';
@@ -31,7 +28,6 @@ export default function AuthPage() {
         }
     }, [isAuthenticated, role, isLoading, navigate, isEmailLink]);
 
-    // Show loading while processing email link
     if (isEmailLink && isLoading) {
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -59,7 +55,6 @@ export default function AuthPage() {
                         </p>
                     </div>
 
-                    {/* Auth Method Tabs */}
                     <div className="flex bg-zinc-900 rounded-lg p-1">
                         <button
                             onClick={() => setAuthMethod('magic')}

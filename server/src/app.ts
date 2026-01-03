@@ -71,14 +71,6 @@ app.use(sanitizeRequest);
 // Apply rate limiting to API routes
 app.use('/api/', apiLimiter);
 
-// Request logging in development
-if (env.NODE_ENV === 'development') {
-    app.use((req: Request, _res: Response, next: NextFunction) => {
-        console.log(`${new Date().toISOString()} | ${req.method} ${req.path}`);
-        next();
-    });
-}
-
 // ─── Health Check ─────────────────────────────────────────────────────────────
 
 app.get('/', (_req: Request, res: Response) => {

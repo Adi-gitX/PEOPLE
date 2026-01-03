@@ -101,11 +101,8 @@ export const uploadImage = async (
         }
     }
 
-    // Demo mode: Generate placeholder URL
     const id = `img_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const placeholderUrl = `https://via.placeholder.com/400x400.png?text=Demo`;
-
-    console.log('📷 Image upload (demo mode):', options.folder);
 
     return {
         url: placeholderUrl,
@@ -136,7 +133,6 @@ export const deleteImage = async (publicId: string): Promise<boolean> => {
         }
     }
 
-    console.log('🗑️ Image deleted (demo mode):', publicId);
     return true;
 };
 
