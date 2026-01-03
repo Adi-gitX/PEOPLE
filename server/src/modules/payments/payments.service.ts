@@ -162,21 +162,42 @@ export const createCheckoutSession = async (
     initiatorId: string,
     amount: number,
     successUrl: string,
-    _cancelUrl: string
+    cancelUrl: string
 ): Promise<{ sessionUrl: string }> => {
-    // Production: Use Stripe Checkout
-    // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    // const session = await stripe.checkout.sessions.create({
-    //     payment_method_types: ['card'],
-    //     line_items: [{ ... }],
-    //     mode: 'payment',
-    //     success_url: successUrl,
-    //     cancel_url: cancelUrl,
-    //     metadata: { missionId, initiatorId },
-    // });
-    // return { sessionUrl: session.url };
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
 
-    // Demo: Create deposit immediately
+    // If Stripe is configured, use real payment
+    if (stripeKey) {
+        const Stripe = (await import('stripe')).default;
+        const stripe = new Stripe(stripeKey);
+
+        const mission = await db.collection(MISSIONS_COLLECTION).doc(missionId).get();
+        const missionData = mission.data();
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: 'usd',
+                    product_data: {
+                        name: missionData?.title || 'Mission Payment',
+                        description: `Escrow deposit for mission`,
+                    },
+                    unit_amount: Math.round(amount * 100), // Convert to cents
+                },
+                quantity: 1,
+            }],
+            mode: 'payment',
+            success_url: successUrl,
+            cancel_url: cancelUrl,
+            metadata: { missionId, initiatorId, amount: amount.toString() },
+        });
+
+        return { sessionUrl: session.url || successUrl };
+    }
+
+    // Demo mode: Create deposit immediately
+    console.log('⚠️ Stripe not configured, using demo mode');
     await createEscrowDeposit(missionId, initiatorId, amount);
     return { sessionUrl: successUrl };
 };
