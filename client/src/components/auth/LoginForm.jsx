@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { signIn, signInWithGoogle, resetPassword } from '../../lib/auth';
 import { Mail, Lock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export function LoginForm() {
     const [email, setEmail] = useState('');
@@ -12,6 +13,7 @@ export function LoginForm() {
     const [showForgotPassword, setShowForgotPassword] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+    const { refreshProfile } = useAuthStore();
 
     const from = location.state?.from?.pathname || '/dashboard';
 
@@ -40,8 +42,23 @@ export function LoginForm() {
 
         try {
             await signIn(email, password);
+
+            // Wait a moment for Firebase to propagate
+            await new Promise(r => setTimeout(r, 300));
+
+            // Refresh profile to get role
+            const userData = await refreshProfile();
+            const role = userData?.user?.primaryRole;
+
             toast.success('Welcome back!');
-            navigate(from, { replace: true });
+
+            // Navigate to correct dashboard based on role
+            const dashboardPath = role === 'initiator'
+                ? '/dashboard/initiator'
+                : '/dashboard/contributor';
+
+            console.log('[LoginForm] Navigating to:', dashboardPath);
+            navigate(dashboardPath, { replace: true });
         } catch (error) {
             console.error('Login error:', error);
             const message = getErrorMessage(error.code);
@@ -81,8 +98,22 @@ export function LoginForm() {
         setIsLoading(true);
         try {
             await signInWithGoogle();
+
+            // Wait for auth to propagate
+            await new Promise(r => setTimeout(r, 500));
+
+            // Refresh profile to get role
+            const userData = await refreshProfile();
+            const role = userData?.user?.primaryRole;
+
             toast.success('Welcome!');
-            navigate(from, { replace: true });
+
+            const dashboardPath = role === 'initiator'
+                ? '/dashboard/initiator'
+                : '/dashboard/contributor';
+
+            console.log('[LoginForm] Google - Navigating to:', dashboardPath);
+            navigate(dashboardPath, { replace: true });
         } catch (error) {
             console.error('Google login error:', error);
             if (error.code === 'auth/popup-closed-by-user') {

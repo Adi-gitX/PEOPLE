@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, Loader2, User, Briefcase, Code, CheckCircle } from 'lucide-react';
@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { api } from '../../lib/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const ACTION_CODE_SETTINGS = {
     url: window.location.origin + '/login?emailLink=true',
@@ -25,73 +26,152 @@ export function EmailOtpForm({ mode = 'login' }) {
         role: 'contributor',
     });
     const navigate = useNavigate();
+    const processedRef = useRef(false);
+    const { setAuthState, refreshProfile } = useAuthStore();
 
     // Check if returning from email link
     useEffect(() => {
         const handleEmailLink = async () => {
-            if (isSignInWithEmailLink(auth, window.location.href)) {
-                setIsLoading(true);
+            // Prevent double processing
+            if (processedRef.current) return;
+            if (!isSignInWithEmailLink(auth, window.location.href)) return;
 
-                // Get email from localStorage
-                let storedEmail = window.localStorage.getItem('emailForSignIn');
+            processedRef.current = true;
+            setIsLoading(true);
 
-                if (!storedEmail) {
-                    // If email not found, ask user to enter it
-                    storedEmail = window.prompt('Please enter your email to confirm:');
-                }
+            // Get email from localStorage
+            let storedEmail = window.localStorage.getItem('emailForSignIn');
 
-                if (!storedEmail) {
-                    toast.error('Email is required to complete sign-in');
-                    setIsLoading(false);
-                    return;
-                }
+            if (!storedEmail) {
+                storedEmail = window.prompt('Please enter your email to confirm:');
+            }
 
+            if (!storedEmail) {
+                toast.error('Email is required to complete sign-in');
+                setIsLoading(false);
+                processedRef.current = false;
+                return;
+            }
+
+            try {
+                console.log('[EmailOtp] Signing in with email link...');
+                const result = await signInWithEmailLink(auth, storedEmail, window.location.href);
+                window.localStorage.removeItem('emailForSignIn');
+
+                console.log('[EmailOtp] Firebase sign-in successful, checking backend...');
+
+                // Force refresh ID token
+                await result.user.getIdToken(true);
+
+                // Wait a moment for auth to propagate
+                await new Promise(r => setTimeout(r, 500));
+
+                // Check if user exists in our database
                 try {
-                    const result = await signInWithEmailLink(auth, storedEmail, window.location.href);
-                    window.localStorage.removeItem('emailForSignIn');
+                    const response = await api.get('/api/v1/users/me');
+                    const userData = response.data;
 
-                    // Check if user exists in our database
+                    console.log('[EmailOtp] Existing user found, role:', userData?.user?.primaryRole);
+
+                    // Set auth state immediately
+                    setAuthState(
+                        {
+                            uid: result.user.uid,
+                            email: result.user.email,
+                            displayName: result.user.displayName,
+                            photoURL: result.user.photoURL,
+                        },
+                        userData?.profile || null,
+                        userData?.user?.primaryRole || 'contributor'
+                    );
+
+                    toast.success('Welcome back!');
+
+                    // Clean up URL first
+                    window.history.replaceState({}, document.title, '/login');
+
+                    // Navigate based on role
+                    const dashboardPath = userData?.user?.primaryRole === 'initiator'
+                        ? '/dashboard/initiator'
+                        : '/dashboard/contributor';
+
+                    console.log('[EmailOtp] Navigating to:', dashboardPath);
+                    navigate(dashboardPath, { replace: true });
+
+                } catch (err) {
+                    // New user - register with stored role info
+                    const storedRole = window.localStorage.getItem('signupRole') || 'contributor';
+                    const storedName = window.localStorage.getItem('signupName') || result.user.displayName || 'User';
+
+                    console.log('[EmailOtp] New user, registering with role:', storedRole);
+
                     try {
-                        await api.get('/api/v1/users/me');
-                        toast.success('Welcome back!');
-                        navigate('/dashboard');
-                    } catch (err) {
-                        // New user - get stored role info
-                        const storedRole = window.localStorage.getItem('signupRole') || 'contributor';
-                        const storedName = window.localStorage.getItem('signupName') || 'User';
-
-                        // Register user in backend
-                        await api.post('/api/v1/users/register', {
+                        const registerResponse = await api.post('/api/v1/users/register', {
                             email: storedEmail,
                             fullName: storedName,
                             role: storedRole,
                         });
 
+                        console.log('[EmailOtp] Registration successful');
+
                         window.localStorage.removeItem('signupRole');
                         window.localStorage.removeItem('signupName');
 
+                        // Set auth state immediately
+                        setAuthState(
+                            {
+                                uid: result.user.uid,
+                                email: result.user.email,
+                                displayName: result.user.displayName || storedName,
+                                photoURL: result.user.photoURL,
+                            },
+                            registerResponse.data?.profile || null,
+                            storedRole
+                        );
+
                         toast.success('Account created successfully!');
-                        navigate(`/dashboard/${storedRole}`);
+
+                        // Clean up URL first
+                        window.history.replaceState({}, document.title, '/login');
+
+                        // Navigate to dashboard
+                        const dashboardPath = storedRole === 'initiator'
+                            ? '/dashboard/initiator'
+                            : '/dashboard/contributor';
+
+                        console.log('[EmailOtp] Navigating new user to:', dashboardPath);
+                        navigate(dashboardPath, { replace: true });
+
+                    } catch (regError) {
+                        console.error('[EmailOtp] Registration failed:', regError);
+                        toast.error('Failed to create account. Please try again.');
+                        setIsLoading(false);
+                        processedRef.current = false;
                     }
-                } catch (error) {
-                    console.error('Email link sign-in error:', error);
-                    toast.error(error.message || 'Failed to sign in');
-                } finally {
-                    setIsLoading(false);
-                    // Clean up URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
                 }
+            } catch (error) {
+                console.error('[EmailOtp] Error:', error);
+                toast.error(error.message || 'Failed to sign in');
+                setIsLoading(false);
+                processedRef.current = false;
+                window.history.replaceState({}, document.title, '/login');
             }
         };
 
         handleEmailLink();
-    }, [navigate]);
+    }, [navigate, setAuthState, refreshProfile]);
 
     const handleSendLink = async (e) => {
         e.preventDefault();
 
         if (!email || !email.includes('@')) {
             toast.error('Please enter a valid email address');
+            return;
+        }
+
+        // Validate name for signup
+        if (mode === 'signup' && !formData.fullName.trim()) {
+            toast.error('Please enter your full name');
             return;
         }
 
@@ -104,6 +184,7 @@ export function EmailOtpForm({ mode = 'login' }) {
             if (mode === 'signup') {
                 window.localStorage.setItem('signupRole', formData.role);
                 window.localStorage.setItem('signupName', formData.fullName || 'User');
+                console.log('[EmailOtp] Stored signup info - Role:', formData.role, 'Name:', formData.fullName);
             }
 
             // Send the magic link
@@ -112,7 +193,7 @@ export function EmailOtpForm({ mode = 'login' }) {
             setStep('sent');
             toast.success('Sign-in link sent to your email!');
         } catch (error) {
-            console.error('Send link error:', error);
+            console.error('[EmailOtp] Send link error:', error);
 
             if (error.code === 'auth/invalid-email') {
                 toast.error('Invalid email address');
@@ -218,6 +299,7 @@ export function EmailOtpForm({ mode = 'login' }) {
                                     value={formData.fullName}
                                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                                     placeholder="John Doe"
+                                    required
                                     className="flex h-10 w-full rounded-md border border-white/10 bg-black pl-10 pr-3 py-2 text-sm text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-white/20"
                                 />
                             </div>

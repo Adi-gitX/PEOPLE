@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { signUp, signInWithGoogle } from '../../lib/auth';
 import { User, Mail, Lock, Briefcase, Code, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export function SignupForm() {
     const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ export function SignupForm() {
     });
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+    const { setRole, refreshProfile } = useAuthStore();
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -59,8 +61,22 @@ export function SignupForm() {
                 formData.fullName,
                 formData.role
             );
+
+            // Set role immediately in store
+            setRole(formData.role);
+
+            // Refresh profile to ensure everything is synced
+            await refreshProfile();
+
             toast.success('Account created successfully!');
-            navigate(`/dashboard/${formData.role}`);
+
+            // Navigate to correct dashboard
+            const dashboardPath = formData.role === 'initiator'
+                ? '/dashboard/initiator'
+                : '/dashboard/contributor';
+
+            console.log('[SignupForm] Navigating to:', dashboardPath);
+            navigate(dashboardPath, { replace: true });
         } catch (error) {
             console.error('Signup error:', error);
             const message = getErrorMessage(error.code);
@@ -74,8 +90,22 @@ export function SignupForm() {
         setIsLoading(true);
         try {
             await signInWithGoogle(formData.role);
+
+            // Set role immediately
+            setRole(formData.role);
+
+            // Wait for profile to be created/fetched
+            await new Promise(r => setTimeout(r, 500));
+            await refreshProfile();
+
             toast.success('Welcome!');
-            navigate(`/dashboard/${formData.role}`);
+
+            const dashboardPath = formData.role === 'initiator'
+                ? '/dashboard/initiator'
+                : '/dashboard/contributor';
+
+            console.log('[SignupForm] Google - Navigating to:', dashboardPath);
+            navigate(dashboardPath, { replace: true });
         } catch (error) {
             console.error('Google signup error:', error);
             if (error.code === 'auth/popup-closed-by-user') {
