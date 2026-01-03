@@ -12,7 +12,8 @@ export const createMission = async (req: Request, res: Response): Promise<void> 
         }
         const mission = await missionsService.createMission(uid, req.body);
         sendCreated(res, { message: 'Mission created successfully', mission });
-    } catch {
+    } catch (error) {
+        console.error('Mission creation error:', error);
         sendError(res, 'Failed to create mission', 500);
     }
 };

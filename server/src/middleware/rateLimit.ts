@@ -96,14 +96,14 @@ const createRateLimiter = (name: string, options: RateLimitOptions) => {
 // Standard API rate limiter
 export const apiLimiter = createRateLimiter('api', {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100,                  // 100 requests per 15 min
+    max: 1000,                 // 1000 requests per 15 min (increased for dev)
     message: 'Too many API requests, please try again later',
 });
 
 // Strict limiter for authentication endpoints
 export const authLimiter = createRateLimiter('auth', {
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10,                   // 10 attempts per hour
+    max: 100,                  // 100 attempts per hour (increased for dev)
     message: 'Too many authentication attempts, please try again later',
     skipSuccessfulRequests: true,
 });
@@ -111,7 +111,7 @@ export const authLimiter = createRateLimiter('auth', {
 // Strict limiter for OTP/verification
 export const otpLimiter = createRateLimiter('otp', {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5,                    // 5 OTP requests per 15 min
+    max: 20,                   // 20 OTP requests per 15 min (increased for dev)
     message: 'Too many verification requests, please wait before trying again',
 });
 

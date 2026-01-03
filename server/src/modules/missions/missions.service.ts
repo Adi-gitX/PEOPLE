@@ -42,7 +42,6 @@ export const createMission = async (
         budgetMin: data.budgetMin,
         budgetMax: data.budgetMax,
         estimatedDurationDays: data.estimatedDurationDays,
-        deadline: data.deadline ? new Date(data.deadline) : undefined,
         maxLeadContributors: 1,
         maxShadowContributors: 1,
         requiresCoreReviewer: true,
@@ -53,6 +52,11 @@ export const createMission = async (
         createdAt: now,
         updatedAt: now,
     };
+
+    // Only add deadline if it exists (Firestore doesn't accept undefined)
+    if (data.deadline) {
+        (mission as any).deadline = new Date(data.deadline);
+    }
 
     const docRef = await db.collection(MISSIONS_COLLECTION).add(mission);
 
@@ -112,10 +116,18 @@ export const getPublicMissions = async (
         query = query.where('status', 'in', ['open', 'matching']);
     }
 
-    query = query.orderBy('createdAt', 'desc').limit(options.limit || 20);
-
     const snapshot = await query.get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Mission));
+    let missions = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Mission));
+
+    // Sort in memory to avoid requiring composite indexes
+    missions.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt as any).getTime();
+        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt as any).getTime();
+        return dateB - dateA; // descending order
+    });
+
+    // Apply limit after sorting
+    return missions.slice(0, options.limit || 20);
 };
 
 /**
@@ -125,10 +137,16 @@ export const getMissionsByInitiator = async (initiatorId: string): Promise<Missi
     const snapshot = await db
         .collection(MISSIONS_COLLECTION)
         .where('initiatorId', '==', initiatorId)
-        .orderBy('createdAt', 'desc')
         .get();
 
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Mission));
+    const missions = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Mission));
+
+    // Sort in memory to avoid requiring a composite index
+    return missions.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt as any).getTime();
+        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt as any).getTime();
+        return dateB - dateA; // descending order
+    });
 };
 
 /**
@@ -288,10 +306,16 @@ export const getApplications = async (missionId: string): Promise<MissionApplica
         .collection(MISSIONS_COLLECTION)
         .doc(missionId)
         .collection('applications')
-        .orderBy('createdAt', 'desc')
         .get();
 
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as MissionApplication));
+    const applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as MissionApplication));
+
+    // Sort in memory to avoid requiring composite indexes
+    return applications.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt as any).getTime();
+        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt as any).getTime();
+        return dateB - dateA; // descending order
+    });
 };
 
 /**
