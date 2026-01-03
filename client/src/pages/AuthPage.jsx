@@ -1,16 +1,47 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { LoginForm } from '../components/auth/LoginForm';
 import { SignupForm } from '../components/auth/SignupForm';
 import { EmailOtpForm } from '../components/auth/EmailOtpForm';
 import { Navbar } from '../components/layout/Navbar';
 import { KeyRound, Sparkles } from 'lucide-react';
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function AuthPage() {
     const [searchParams] = useSearchParams();
-    const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'login';
+    const navigate = useNavigate();
+    const { isAuthenticated, role, isLoading } = useAuthStore();
+
+    // Determine initial mode from URL
+    const urlMode = searchParams.get('mode');
+    const isEmailLink = searchParams.get('emailLink') === 'true';
+    const initialMode = urlMode === 'signup' || window.location.pathname === '/signup' ? 'signup' : 'login';
+
     const [mode, setMode] = useState(initialMode);
     const [authMethod, setAuthMethod] = useState('magic'); // 'magic' or 'password'
+
+    // Redirect if already authenticated (unless processing email link)
+    useEffect(() => {
+        if (!isLoading && isAuthenticated && role && !isEmailLink) {
+            console.log('[AuthPage] Already authenticated, redirecting to dashboard');
+            const dashboardPath = role === 'initiator'
+                ? '/dashboard/initiator'
+                : '/dashboard/contributor';
+            navigate(dashboardPath, { replace: true });
+        }
+    }, [isAuthenticated, role, isLoading, navigate, isEmailLink]);
+
+    // Show loading while processing email link
+    if (isEmailLink && isLoading) {
+        return (
+            <div className="min-h-screen bg-black text-white flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
+                    <p className="text-zinc-500">Signing you in...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-black text-white flex flex-col">

@@ -11,12 +11,23 @@ export const useAuthStore = create(
             isAuthenticated: false,
             isLoading: true,
             role: null,
+            authInitialized: false,
 
             initialize: () => {
+                if (get().authInitialized) return; // Prevent double initialization
+
                 onAuthChange(async (firebaseUser) => {
+                    console.log('[Auth] State changed:', firebaseUser?.email || 'No user');
+
                     if (firebaseUser) {
                         try {
+                            // Get ID token first to ensure it's available for API calls
+                            await firebaseUser.getIdToken(true);
+
                             const response = await api.get('/api/v1/users/me');
+                            const userData = response.data;
+
+                            console.log('[Auth] User profile loaded:', userData?.user?.primaryRole);
 
                             set({
                                 user: {
@@ -25,22 +36,31 @@ export const useAuthStore = create(
                                     displayName: firebaseUser.displayName,
                                     photoURL: firebaseUser.photoURL,
                                 },
-                                profile: response.data?.profile || null,
+                                profile: userData?.profile || null,
                                 isAuthenticated: true,
                                 isLoading: false,
-                                role: response.data?.user?.primaryRole || null,
+                                role: userData?.user?.primaryRole || null,
+                                authInitialized: true,
                             });
                         } catch (error) {
-                            // If profile fetch fails (e.g., 404), try to auto-register the user
-                            // This handles cases where Firebase auth succeeded but backend creation failed
-                            console.warn("User profile not found, attempting auto-registration...", error);
+                            console.warn('[Auth] Profile not found, attempting auto-registration...', error.message);
+
+                            // Check localStorage for signup info
+                            const storedRole = window.localStorage.getItem('signupRole') || 'contributor';
+                            const storedName = window.localStorage.getItem('signupName') || firebaseUser.displayName || 'User';
 
                             try {
                                 const registerResponse = await api.post('/api/v1/users/register', {
                                     email: firebaseUser.email,
-                                    fullName: firebaseUser.displayName || 'User',
-                                    role: 'contributor', // Default fallback role
+                                    fullName: storedName,
+                                    role: storedRole,
                                 });
+
+                                console.log('[Auth] Auto-registration successful');
+
+                                // Clean up localStorage
+                                window.localStorage.removeItem('signupRole');
+                                window.localStorage.removeItem('signupName');
 
                                 set({
                                     user: {
@@ -49,14 +69,16 @@ export const useAuthStore = create(
                                         displayName: firebaseUser.displayName,
                                         photoURL: firebaseUser.photoURL,
                                     },
-                                    profile: registerResponse.profile || null,
+                                    profile: registerResponse.data?.profile || null,
                                     isAuthenticated: true,
                                     isLoading: false,
-                                    role: registerResponse.user?.primaryRole || 'contributor',
+                                    role: registerResponse.data?.user?.primaryRole || storedRole,
+                                    authInitialized: true,
                                 });
-                                console.log("Auto-registration successful");
                             } catch (regError) {
-                                console.error("Auto-registration failed:", regError);
+                                console.error('[Auth] Auto-registration failed:', regError);
+
+                                // Still set authenticated but with no role
                                 set({
                                     user: {
                                         uid: firebaseUser.uid,
@@ -68,18 +90,33 @@ export const useAuthStore = create(
                                     isAuthenticated: true,
                                     isLoading: false,
                                     role: null,
+                                    authInitialized: true,
                                 });
                             }
                         }
                     } else {
+                        console.log('[Auth] User signed out');
                         set({
                             user: null,
                             profile: null,
                             isAuthenticated: false,
                             isLoading: false,
                             role: null,
+                            authInitialized: true,
                         });
                     }
+                });
+            },
+
+            // Called after successful login/signup to immediately update state
+            setAuthState: (userData, profileData, userRole) => {
+                console.log('[Auth] Setting auth state manually:', userRole);
+                set({
+                    user: userData,
+                    profile: profileData,
+                    isAuthenticated: true,
+                    isLoading: false,
+                    role: userRole,
                 });
             },
 
@@ -104,11 +141,12 @@ export const useAuthStore = create(
                         role: null,
                     });
                 } catch (error) {
-                    console.error('Logout error:', error);
+                    console.error('[Auth] Logout error:', error);
                 }
             },
 
             setRole: (role) => {
+                console.log('[Auth] Setting role:', role);
                 set({ role });
             },
 
@@ -119,12 +157,16 @@ export const useAuthStore = create(
             refreshProfile: async () => {
                 try {
                     const response = await api.get('/api/v1/users/me');
+                    const userData = response.data;
+                    console.log('[Auth] Profile refreshed:', userData?.user?.primaryRole);
                     set({
-                        profile: response.data?.profile || null,
-                        role: response.data?.user?.primaryRole || null,
+                        profile: userData?.profile || null,
+                        role: userData?.user?.primaryRole || null,
                     });
+                    return userData;
                 } catch (error) {
-                    console.error('Refresh profile error:', error);
+                    console.error('[Auth] Refresh profile error:', error);
+                    throw error;
                 }
             },
 
