@@ -50,7 +50,7 @@ export function ImageUploader({
                     const result = await onUpload(base64);
                     onChange?.(result.url || base64);
                     toast.success('Image uploaded successfully');
-                } catch (error) {
+                } catch {
                     toast.error('Upload failed. Please try again.');
                     setPreview(value || null);
                 } finally {
