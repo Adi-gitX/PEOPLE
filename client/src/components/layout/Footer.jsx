@@ -2,6 +2,12 @@ import { Link } from 'react-router-dom';
 import { Github, Twitter, Linkedin } from 'lucide-react';
 
 export function Footer() {
+    const socialLinks = [
+        { href: import.meta.env.VITE_SOCIAL_GITHUB, icon: Github, label: 'GitHub' },
+        { href: import.meta.env.VITE_SOCIAL_X, icon: Twitter, label: 'X' },
+        { href: import.meta.env.VITE_SOCIAL_LINKEDIN, icon: Linkedin, label: 'LinkedIn' },
+    ].filter((item) => Boolean(item.href));
+
     return (
         <footer className="border-t border-white/10 bg-black py-20">
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12">
@@ -45,19 +51,28 @@ export function Footer() {
 
             <div className="max-w-7xl mx-auto px-6 mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="text-xs text-muted-foreground/40">
-                    © 2025 PEOPLE. Built with Cloudflare Workers & Pages.
+                    © 2026 PEOPLE.
                 </div>
-                <div className="flex items-center gap-4">
-                    <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/40 hover:text-white transition-colors">
-                        <Github className="w-5 h-5" />
-                    </a>
-                    <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/40 hover:text-white transition-colors">
-                        <Twitter className="w-5 h-5" />
-                    </a>
-                    <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/40 hover:text-white transition-colors">
-                        <Linkedin className="w-5 h-5" />
-                    </a>
-                </div>
+                {socialLinks.length > 0 && (
+                    <div className="flex items-center gap-4">
+                        {socialLinks.map((social) => {
+                            const SocialIcon = social.icon;
+
+                            return (
+                                <a
+                                    key={social.label}
+                                    href={social.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-muted-foreground/40 hover:text-white transition-colors"
+                                    aria-label={social.label}
+                                >
+                                    <SocialIcon className="w-5 h-5" />
+                                </a>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </footer>
     );
