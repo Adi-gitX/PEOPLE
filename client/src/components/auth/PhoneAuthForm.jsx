@@ -3,11 +3,11 @@ import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { Phone, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { api } from '../../lib/api';
 
-export function PhoneAuthForm({ mode = 'login', onSuccess }) {
+export function PhoneAuthForm({ onSuccess }) {
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [step, setStep] = useState('phone'); // 'phone' or 'otp'
@@ -118,7 +118,7 @@ export function PhoneAuthForm({ mode = 'login', onSuccess }) {
             try {
                 await api.get('/api/v1/users/me');
                 toast.success('Welcome back!');
-            } catch (err) {
+            } catch {
                 // New user - register them
                 await api.post('/api/v1/users/register', {
                     email: `${user.phoneNumber?.replace(/\D/g, '')}@phone.user`,
