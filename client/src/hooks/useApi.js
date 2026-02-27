@@ -90,7 +90,7 @@ export const useMission = (id) => {
  * Hook for fetching contributors
  */
 export const useContributors = () => {
-    return useApi('/api/v1/contributors');
+    return useApi('/api/v1/contributors/public');
 };
 
 /**
