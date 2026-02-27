@@ -1,40 +1,39 @@
 import { PublicLayout } from '../components/layout/PublicLayout';
 import { Button } from '../components/ui/Button';
 import { useContributors } from '../hooks/useApi';
-import { Users, Globe, Shield, Zap, ArrowUpRight, User } from 'lucide-react';
+import { Users, Shield, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-
-const MOCK_PEERS = [
-    {
-        id: 'mock-1',
-        fullName: "Alex Rivera",
-        headline: "Full Stack Engineer",
-        trustScore: 98,
-        matchPower: 94,
-        skills: [{ skillName: "React" }, { skillName: "Node.js" }, { skillName: "Postgres" }],
-        isLookingForWork: true,
-    },
-    {
-        id: 'mock-2',
-        fullName: "Sarah Chen",
-        headline: "Systems Architect",
-        trustScore: 95,
-        matchPower: 88,
-        skills: [{ skillName: "Go" }, { skillName: "Kubernetes" }, { skillName: "AWS" }],
-        isLookingForWork: false,
-    },
-];
+import { api } from '../lib/api';
+import { useAuthStore } from '../store/useAuthStore';
+import { useNavigate } from 'react-router-dom';
 
 export default function NetworkPage() {
-    const { data: apiContributors, loading, error } = useContributors();
+    const { data: apiContributors, loading } = useContributors();
+    const { isAuthenticated } = useAuthStore();
+    const navigate = useNavigate();
+    const contributors = Array.isArray(apiContributors) ? apiContributors : [];
 
-    // Use API data if available, fallback to mock
-    const contributors = (apiContributors && apiContributors.length > 0) ? apiContributors : MOCK_PEERS;
+    const handleConnect = async (peer) => {
+        const recipientId = peer.userId || peer.id;
 
-    const handleConnect = (name) => {
-        toast.info(`Connection request sent to ${name}`, {
-            description: "They'll be notified of your interest"
-        });
+        if (!isAuthenticated) {
+            toast.info('Please log in to start a conversation');
+            navigate('/login', { state: { from: { pathname: '/network' } } });
+            return;
+        }
+
+        try {
+            const response = await api.post('/api/v1/conversations/start', { recipientId });
+            const conversation = response.data?.conversation;
+            toast.success(`Conversation started with ${peer.fullName || 'contributor'}`);
+            if (conversation?.id) {
+                navigate('/messages', { state: { conversationId: conversation.id } });
+            } else {
+                navigate('/messages');
+            }
+        } catch (error) {
+            toast.error(error.message || 'Failed to start conversation');
+        }
     };
 
     return (
@@ -146,7 +145,7 @@ export default function NetworkPage() {
 
                                     <Button
                                         className="w-full bg-white text-black hover:bg-white/90 font-semibold group-hover:scale-[1.02] transition-transform"
-                                        onClick={() => handleConnect(peer.fullName || 'this contributor')}
+                                        onClick={() => handleConnect(peer)}
                                     >
                                         Connect
                                     </Button>
