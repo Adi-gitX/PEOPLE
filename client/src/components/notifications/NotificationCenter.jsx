@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, CheckCircle2, AlertTriangle, AlertCircle, Briefcase, User, DollarSign, MessageCircle, Check } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { api } from '../../lib/api';
-import { Skeleton } from '../ui/Skeleton';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const TYPE_ICONS = {
     application_received: Briefcase,
@@ -21,20 +21,110 @@ const PRIORITY_CONFIG = {
     final: { bg: 'bg-red-500/10', text: 'text-red-400', Icon: AlertCircle, animate: true },
 };
 
+const POLLING_INTERVAL_MS = 30000;
+const MAX_CONSECUTIVE_NETWORK_FAILURES = 3;
+const NETWORK_ERROR_REGEX = /(failed to fetch|fetch failed|networkerror|err_connection_refused)/i;
+
+const isNetworkFailure = (error) => {
+    if (!(error instanceof Error)) return false;
+    return NETWORK_ERROR_REGEX.test(error.message);
+};
+
 export function NotificationCenter() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const [isOpen, setIsOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [consecutiveFailures, setConsecutiveFailures] = useState(0);
+    const [pollingPaused, setPollingPaused] = useState(false);
     const dropdownRef = useRef(null);
+    const hasLoggedNetworkIssueRef = useRef(false);
+
+    const resetNetworkState = useCallback(() => {
+        setConsecutiveFailures(0);
+        setPollingPaused(false);
+        hasLoggedNetworkIssueRef.current = false;
+    }, []);
+
+    const handleFetchError = useCallback((context, error) => {
+        if (isNetworkFailure(error)) {
+            setConsecutiveFailures((previous) => {
+                const next = previous + 1;
+                if (next >= MAX_CONSECUTIVE_NETWORK_FAILURES) {
+                    setPollingPaused(true);
+                }
+                return next;
+            });
+
+            if (!hasLoggedNetworkIssueRef.current) {
+                console.warn(`[NotificationCenter] ${context}: backend is currently unreachable.`);
+                hasLoggedNetworkIssueRef.current = true;
+            }
+            return;
+        }
+
+        console.error(`[NotificationCenter] ${context}:`, error);
+    }, []);
+
+    const fetchNotifications = useCallback(async (force = false) => {
+        if (!isAuthenticated) {
+            setNotifications([]);
+            setLoading(false);
+            return;
+        }
+        if (pollingPaused && !force) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await api.get('/api/v1/notifications');
+            setNotifications(response.data?.notifications || []);
+            resetNetworkState();
+        } catch (error) {
+            handleFetchError('Unable to fetch notifications', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [handleFetchError, isAuthenticated, pollingPaused, resetNetworkState]);
+
+    const fetchUnreadCount = useCallback(async (force = false) => {
+        if (!isAuthenticated) {
+            setUnreadCount(0);
+            return;
+        }
+        if (pollingPaused && !force) {
+            return;
+        }
+
+        try {
+            const response = await api.get('/api/v1/notifications/count');
+            setUnreadCount(response.data?.count || 0);
+            resetNetworkState();
+        } catch (error) {
+            handleFetchError('Unable to fetch unread count', error);
+        }
+    }, [handleFetchError, isAuthenticated, pollingPaused, resetNetworkState]);
 
     useEffect(() => {
-        fetchNotifications();
-        fetchUnreadCount();
+        if (!isAuthenticated) {
+            setNotifications([]);
+            setUnreadCount(0);
+            setLoading(false);
+            resetNetworkState();
+            return undefined;
+        }
 
-        const interval = setInterval(fetchUnreadCount, 30000);
+        setLoading(false);
+        void fetchUnreadCount();
+
+        const interval = setInterval(() => {
+            void fetchUnreadCount();
+        }, POLLING_INTERVAL_MS);
+
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchUnreadCount, isAuthenticated, resetNetworkState]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -42,39 +132,21 @@ export function NotificationCenter() {
                 setIsOpen(false);
             }
         };
+
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
+
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen]);
-
-    const fetchNotifications = async () => {
-        try {
-            const response = await api.get('/api/v1/notifications');
-            setNotifications(response.data?.notifications || []);
-        } catch (error) {
-            console.error('Failed to fetch notifications:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchUnreadCount = async () => {
-        try {
-            const response = await api.get('/api/v1/notifications/count');
-            setUnreadCount(response.data?.count || 0);
-        } catch (error) {
-            console.error('Failed to fetch unread count:', error);
-        }
-    };
 
     const handleMarkAsRead = async (id) => {
         try {
             await api.patch(`/api/v1/notifications/${id}/read`);
-            setNotifications(prev =>
-                prev.map(n => n.id === id ? { ...n, isRead: true } : n)
-            );
-            setUnreadCount(prev => Math.max(0, prev - 1));
+            setNotifications((previous) => previous.map((notification) => (
+                notification.id === id ? { ...notification, isRead: true } : notification
+            )));
+            setUnreadCount((previous) => Math.max(0, previous - 1));
         } catch (error) {
             console.error('Failed to mark as read:', error);
         }
@@ -83,17 +155,31 @@ export function NotificationCenter() {
     const handleMarkAllAsRead = async () => {
         try {
             await api.post('/api/v1/notifications/read-all');
-            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            setNotifications((previous) => previous.map((notification) => ({ ...notification, isRead: true })));
             setUnreadCount(0);
         } catch (error) {
             console.error('Failed to mark all as read:', error);
         }
     };
 
+    const retryNotifications = () => {
+        resetNetworkState();
+        void fetchUnreadCount(true);
+        if (isOpen) {
+            void fetchNotifications(true);
+        }
+    };
+
     const toggleOpen = () => {
-        setIsOpen(!isOpen);
-        if (!isOpen) {
-            fetchNotifications();
+        const opening = !isOpen;
+        setIsOpen(opening);
+
+        if (opening) {
+            if (pollingPaused) {
+                resetNetworkState();
+            }
+            void fetchNotifications(true);
+            void fetchUnreadCount(true);
         }
     };
 
@@ -129,14 +215,17 @@ export function NotificationCenter() {
                 <div className="absolute right-0 mt-2 w-96 rounded-xl border border-white/10 bg-[#0a0a0a] shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
                         <h3 className="font-bold">Notifications</h3>
-                        <div className="text-xs text-muted-foreground">{unreadCount} unread</div>
+                        <div className="text-xs text-muted-foreground">
+                            {unreadCount} unread
+                            {pollingPaused && consecutiveFailures >= MAX_CONSECUTIVE_NETWORK_FAILURES ? ' • offline' : ''}
+                        </div>
                     </div>
 
                     <div className="max-h-[400px] overflow-y-auto">
                         {loading ? (
                             <div className="p-4 space-y-3">
-                                {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="flex gap-3 animate-pulse">
+                                {[...Array(3)].map((_, index) => (
+                                    <div key={index} className="flex gap-3 animate-pulse">
                                         <div className="w-8 h-8 rounded-full bg-zinc-800" />
                                         <div className="flex-1 space-y-2">
                                             <div className="h-4 w-3/4 bg-zinc-800 rounded" />
@@ -145,13 +234,21 @@ export function NotificationCenter() {
                                     </div>
                                 ))}
                             </div>
+                        ) : pollingPaused && notifications.length === 0 ? (
+                            <div className="p-8 text-center text-zinc-500">
+                                <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm mb-3">Notifications are temporarily unavailable.</p>
+                                <Button size="sm" variant="outline" onClick={retryNotifications}>
+                                    Retry
+                                </Button>
+                            </div>
                         ) : notifications.length === 0 ? (
                             <div className="p-8 text-center text-zinc-500">
                                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
                                 <p className="text-sm">No notifications yet</p>
                             </div>
                         ) : (
-                            notifications.slice(0, 10).map(notification => {
+                            notifications.slice(0, 10).map((notification) => {
                                 const priorityConfig = PRIORITY_CONFIG[notification.priority] || PRIORITY_CONFIG.basic;
                                 const TypeIcon = TYPE_ICONS[notification.type] || Bell;
 
@@ -181,7 +278,7 @@ export function NotificationCenter() {
                                                 {notification.actionUrl && !notification.isRead && (
                                                     <Link
                                                         to={notification.actionUrl}
-                                                        onClick={(e) => e.stopPropagation()}
+                                                        onClick={(event) => event.stopPropagation()}
                                                         className="inline-block mt-2"
                                                     >
                                                         <Button variant="outline" size="sm" className="h-7 text-xs">
@@ -205,13 +302,24 @@ export function NotificationCenter() {
                         >
                             Mark all as read
                         </button>
-                        <Link
-                            to="/notifications"
-                            className="text-xs text-muted-foreground hover:text-white transition-colors"
-                            onClick={() => setIsOpen(false)}
-                        >
-                            View all
-                        </Link>
+                        <div className="flex items-center gap-4">
+                            {pollingPaused && (
+                                <button
+                                    type="button"
+                                    onClick={retryNotifications}
+                                    className="text-xs text-muted-foreground hover:text-white transition-colors"
+                                >
+                                    Retry
+                                </button>
+                            )}
+                            <Link
+                                to="/notifications"
+                                className="text-xs text-muted-foreground hover:text-white transition-colors"
+                                onClick={() => setIsOpen(false)}
+                            >
+                                View all
+                            </Link>
+                        </div>
                     </div>
                 </div>
             )}
