@@ -12,6 +12,7 @@ const getAuthToken = async () => {
 
 const apiRequest = async (endpoint, options = {}) => {
     const token = await getAuthToken();
+    const requestUrl = `${API_URL}${endpoint}`;
 
     const headers = {
         'Content-Type': 'application/json',
@@ -22,16 +23,25 @@ const apiRequest = async (endpoint, options = {}) => {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers,
-    });
+    let response;
+    try {
+        response = await fetch(requestUrl, {
+            ...options,
+            headers,
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown network error';
+        const networkError = new Error(`Network request failed for ${endpoint} (API: ${API_URL}): ${message}`);
+        networkError.name = 'NetworkError';
+        networkError.cause = error;
+        throw networkError;
+    }
 
 
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
         if (!response.ok) {
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+            throw new Error(`API Error (${endpoint}): ${response.status} ${response.statusText}`);
         }
         return null;
     }
@@ -39,7 +49,12 @@ const apiRequest = async (endpoint, options = {}) => {
     const data = await response.json();
 
     if (!response.ok) {
-        const error = new Error(data.message || data.error || 'API request failed');
+        const baseMessage = data.message || data.error || 'API request failed';
+        const error = new Error(`${baseMessage} (${endpoint})`);
+        error.status = response.status;
+        error.endpoint = endpoint;
+        error.apiBaseUrl = API_URL;
+        error.url = requestUrl;
         error.details = data.details; // Pass validation details through
         throw error;
     }
