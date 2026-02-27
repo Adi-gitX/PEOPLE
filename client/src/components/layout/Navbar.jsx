@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { useAuthStore } from '../../store/useAuthStore';
-import { LogOut, User, Settings, MessageSquare, Wallet, Menu, X, Compass, Users, Zap } from 'lucide-react';
+import { LogOut, User, MessageSquare, Wallet, Menu, X, Compass, Users, Zap } from 'lucide-react';
 import { useState } from 'react';
 
 export function Navbar() {
@@ -22,6 +22,7 @@ export function Navbar() {
 
     const isInitiator = role === 'initiator';
     const isContributor = role === 'contributor';
+    const dashboardPath = role === 'admin' ? '/admin' : `/dashboard/${role || 'contributor'}`;
 
     const handleLogout = async () => {
         await logout();
@@ -116,7 +117,15 @@ export function Navbar() {
                                             </div>
                                             <div className="py-2">
                                                 <Link
-                                                    to={`/dashboard/${role || 'contributor'}`}
+                                                    to="/dashboard/profile"
+                                                    onClick={() => setShowDropdown(false)}
+                                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-white/5"
+                                                >
+                                                    <User className="h-4 w-4" />
+                                                    Profile
+                                                </Link>
+                                                <Link
+                                                    to={dashboardPath}
                                                     onClick={() => setShowDropdown(false)}
                                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-white/5"
                                                 >
@@ -138,14 +147,6 @@ export function Navbar() {
                                                 >
                                                     <Wallet className="h-4 w-4" />
                                                     Wallet
-                                                </Link>
-                                                <Link
-                                                    to="/dashboard/settings"
-                                                    onClick={() => setShowDropdown(false)}
-                                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-white/5"
-                                                >
-                                                    <Settings className="h-4 w-4" />
-                                                    Settings
                                                 </Link>
                                             </div>
                                             <div className="border-t border-white/10 py-2">
@@ -217,12 +218,20 @@ export function Navbar() {
                                 <>
                                     <div className="h-px bg-white/10 my-3" />
                                     <Link
-                                        to={`/dashboard/${role || 'contributor'}`}
+                                        to={dashboardPath}
                                         onClick={() => setMobileMenuOpen(false)}
                                         className="flex items-center gap-3 px-4 py-3 rounded-lg text-neutral-400 hover:bg-white/5 hover:text-white"
                                     >
                                         <User className="w-5 h-5" />
                                         Dashboard
+                                    </Link>
+                                    <Link
+                                        to="/dashboard/profile"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-neutral-400 hover:bg-white/5 hover:text-white"
+                                    >
+                                        <User className="w-5 h-5" />
+                                        Profile
                                     </Link>
                                     <Link
                                         to="/messages"
