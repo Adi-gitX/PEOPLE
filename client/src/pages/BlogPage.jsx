@@ -1,5 +1,8 @@
 import { PublicLayout } from '../components/layout/PublicLayout';
 import { Clock, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { api } from '../lib/api';
+import { toast } from 'sonner';
 
 const POSTS = [
     {
@@ -60,8 +63,32 @@ const POSTS = [
 ];
 
 export default function BlogPage() {
+    const [email, setEmail] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [subscribed, setSubscribed] = useState(false);
     const featured = POSTS.find(p => p.featured);
     const rest = POSTS.filter(p => !p.featured);
+
+    const handleNewsletterSubmit = async (e) => {
+        e.preventDefault();
+        if (!email.trim()) return;
+
+        setSubmitting(true);
+        try {
+            const response = await api.post('/api/v1/leads/newsletter', {
+                email: email.trim(),
+                source: 'blog_page',
+            });
+
+            setSubscribed(true);
+            setEmail('');
+            toast.success(response?.data?.message || 'Subscribed to updates.');
+        } catch (error) {
+            toast.error(error.message || 'Failed to subscribe. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
         <PublicLayout>
@@ -79,7 +106,7 @@ export default function BlogPage() {
 
                 {/* Featured */}
                 {featured && (
-                    <div className="mb-12 p-8 bg-zinc-900 border border-zinc-800 rounded-2xl cursor-pointer hover:border-zinc-700 transition-colors">
+                    <div className="mb-12 p-8 bg-zinc-900 border border-zinc-800 rounded-2xl">
                         <div className="flex items-center gap-3 mb-4">
                             <span className="px-2 py-1 bg-white text-black text-xs font-medium rounded">Featured</span>
                             <span className="text-xs text-zinc-500">{featured.category}</span>
@@ -102,7 +129,7 @@ export default function BlogPage() {
                     {rest.map((post) => (
                         <article
                             key={post.id}
-                            className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors cursor-pointer"
+                            className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl"
                         >
                             <span className="text-xs text-zinc-500">{post.category}</span>
                             <h3 className="text-lg font-semibold mt-2 mb-2">{post.title}</h3>
@@ -118,15 +145,24 @@ export default function BlogPage() {
                 {/* Newsletter */}
                 <div className="text-center py-12 border border-zinc-800 rounded-2xl">
                     <h2 className="text-2xl font-bold mb-3">Stay updated</h2>
-                    <p className="text-zinc-400 mb-6">Get articles delivered to your inbox.</p>
-                    <form className="flex gap-3 max-w-sm mx-auto">
+                    <p className="text-zinc-400 mb-6">
+                        {subscribed ? 'You are subscribed.' : 'Get articles delivered to your inbox.'}
+                    </p>
+                    <form onSubmit={handleNewsletterSubmit} className="flex gap-3 max-w-sm mx-auto">
                         <input
                             type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             placeholder="you@example.com"
+                            required
                             className="flex-1 h-12 px-4 bg-zinc-900 border border-zinc-800 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
                         />
-                        <button className="h-12 px-6 bg-white text-black font-medium rounded-xl hover:bg-zinc-200 transition-colors">
-                            Subscribe
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="h-12 px-6 bg-white text-black font-medium rounded-xl hover:bg-zinc-200 transition-colors disabled:opacity-60"
+                        >
+                            {submitting ? 'Submitting...' : 'Subscribe'}
                         </button>
                     </form>
                 </div>
