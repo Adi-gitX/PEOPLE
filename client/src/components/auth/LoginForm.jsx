@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../ui/Button';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { signIn, signInWithGoogle, resetPassword } from '../../lib/auth';
 import { Mail, Lock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,10 +12,7 @@ export function LoginForm() {
     const [isLoading, setIsLoading] = useState(false);
     const [showForgotPassword, setShowForgotPassword] = useState(false);
     const navigate = useNavigate();
-    const location = useLocation();
     const { refreshProfile } = useAuthStore();
-
-    const from = location.state?.from?.pathname || '/dashboard';
 
     const getErrorMessage = (errorCode) => {
         switch (errorCode) {
