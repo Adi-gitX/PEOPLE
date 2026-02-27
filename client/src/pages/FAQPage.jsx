@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PublicLayout } from '../components/layout/PublicLayout';
 import { ChevronDown, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const FAQ_DATA = [
     {
@@ -50,11 +51,11 @@ const FAQ_DATA = [
             },
             {
                 q: 'What are the platform fees?',
-                a: 'PEOPLE charges a 10% platform fee on completed missions. This is deducted from the total mission value before payment to the Contributor.',
+                a: 'PEOPLE charges 0% platform markup on missions. Only third-party processor fees may apply at payment time.',
             },
             {
                 q: 'How do I withdraw my earnings?',
-                a: 'Go to your Wallet page and click "Withdraw". You can withdraw to a linked bank account (Stripe Connect integration coming soon).',
+                a: 'Go to your Wallet page and submit a withdrawal request with payout details. Withdrawals are processed from your available balance.',
             },
         ],
     },
@@ -162,12 +163,12 @@ export default function FAQPage() {
                 <div className="mt-12 bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center">
                     <h3 className="font-semibold text-white mb-2">Still have questions?</h3>
                     <p className="text-zinc-400 mb-4">Can not find what you are looking for? Get in touch.</p>
-                    <a
-                        href="/contact"
+                    <Link
+                        to="/contact"
                         className="inline-flex items-center px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-zinc-200 transition-colors"
                     >
                         Contact Support
-                    </a>
+                    </Link>
                 </div>
             </div>
         </PublicLayout >
