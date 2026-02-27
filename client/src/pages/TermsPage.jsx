@@ -1,4 +1,5 @@
 import { PublicLayout } from '../components/layout/PublicLayout';
+import { Link } from 'react-router-dom';
 
 export default function TermsPage() {
     return (
@@ -42,7 +43,7 @@ export default function TermsPage() {
                             <li>Respect all intellectual property rights of others.</li>
                             <li>No harassment, discrimination, or abusive behavior.</li>
                             <li>All payments must go through the platform's escrow system.</li>
-                            <li>Do not attempt to circumvent platform fees.</li>
+                            <li>Do not attempt to bypass escrow or move in-platform contracts off-platform.</li>
                         </ul>
                     </section>
 
@@ -50,8 +51,8 @@ export default function TermsPage() {
                         <h2 className="text-xl font-semibold text-white mb-4">5. Payments & Escrow</h2>
                         <p className="text-zinc-400 leading-relaxed">
                             PEOPLE uses an escrow system to protect both Initiators and Contributors. Funds are held in escrow
-                            until mission completion is approved. Disputes are handled by our admin team. A platform fee applies
-                            to all successful transactions.
+                            until mission completion is approved. Disputes are handled by our admin team. PEOPLE does not add
+                            platform markup to mission payouts; only third-party payment processor fees may apply.
                         </p>
                     </section>
 
@@ -76,7 +77,7 @@ export default function TermsPage() {
                         <h2 className="text-xl font-semibold text-white mb-4">8. Contact</h2>
                         <p className="text-zinc-400 leading-relaxed">
                             For questions about these Terms, please contact us at{' '}
-                            <a href="/contact" className="text-white underline">our contact page</a>.
+                            <Link to="/contact" className="text-white underline">our contact page</Link>.
                         </p>
                     </section>
                 </div>
