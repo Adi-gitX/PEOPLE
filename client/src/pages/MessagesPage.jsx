@@ -1,7 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { api } from '../lib/api';
+import { firestore } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
+import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
+import {
+    findConversationById,
+    getOtherParticipantInitial,
+    getOtherParticipantName,
+} from './messages/messagesUtils';
 import {
     MessageCircle,
     Send,
@@ -19,6 +27,7 @@ import { toast } from 'sonner';
 import { SkeletonConversationItem, SkeletonMessage } from '../components/ui/Skeleton';
 
 export default function MessagesPage() {
+    const location = useLocation();
     const { user } = useAuthStore();
     const [conversations, setConversations] = useState([]);
     const [selectedConversation, setSelectedConversation] = useState(null);
@@ -29,22 +38,9 @@ export default function MessagesPage() {
     const [sending, setSending] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const messagesEndRef = useRef(null);
+    const preselectedConversationId = location.state?.conversationId;
 
-    useEffect(() => {
-        fetchConversations();
-    }, []);
-
-    useEffect(() => {
-        if (selectedConversation) {
-            fetchMessages(selectedConversation.id);
-        }
-    }, [selectedConversation]);
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-
-    const fetchConversations = async () => {
+    const fetchConversations = useCallback(async () => {
         try {
             const response = await api.get('/api/v1/conversations');
             setConversations(response.data?.conversations || []);
@@ -54,19 +50,81 @@ export default function MessagesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const fetchMessages = async (conversationId) => {
+    const markConversationAsRead = useCallback(async (conversationId) => {
+        try {
+            await api.post(`/api/v1/conversations/${conversationId}/read`);
+            setConversations((prev) =>
+                prev.map((conversation) =>
+                    conversation.id === conversationId
+                        ? { ...conversation, unreadCount: 0 }
+                        : conversation
+                )
+            );
+        } catch {
+            // No-op for read acknowledgments
+        }
+    }, []);
+
+    const fetchMessages = useCallback(async (conversationId) => {
         setMessagesLoading(true);
         try {
             const response = await api.get(`/api/v1/conversations/${conversationId}/messages`);
             setMessages(response.data?.messages || []);
+            await markConversationAsRead(conversationId);
         } catch (error) {
             console.error('Failed to fetch messages:', error);
         } finally {
             setMessagesLoading(false);
         }
-    };
+    }, [markConversationAsRead]);
+
+    useEffect(() => {
+        fetchConversations();
+    }, [fetchConversations]);
+
+    useEffect(() => {
+        if (!preselectedConversationId || conversations.length === 0) return;
+        const conversation = findConversationById(conversations, preselectedConversationId);
+        if (conversation) {
+            setSelectedConversation(conversation);
+        }
+    }, [preselectedConversationId, conversations]);
+
+    useEffect(() => {
+        if (selectedConversation) {
+            fetchMessages(selectedConversation.id);
+        }
+    }, [selectedConversation, fetchMessages]);
+
+    useEffect(() => {
+        if (!selectedConversation?.id) return undefined;
+
+        const messagesQuery = query(
+            collection(firestore, 'conversations', selectedConversation.id, 'messages'),
+            orderBy('createdAt', 'asc'),
+            limit(200)
+        );
+
+        const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+            const nextMessages = snapshot.docs.map((doc) => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate?.() || data.createdAt,
+                };
+            });
+            setMessages(nextMessages);
+        });
+
+        return () => unsubscribe();
+    }, [selectedConversation?.id]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
@@ -74,26 +132,19 @@ export default function MessagesPage() {
 
         setSending(true);
         try {
-            const response = await api.post(`/api/v1/conversations/${selectedConversation.id}/messages`, {
+            await api.post(`/api/v1/conversations/${selectedConversation.id}/messages`, {
                 content: newMessage.trim()
             });
-            setMessages(prev => [...prev, response.data.message]);
             setNewMessage('');
         } catch (error) {
-            toast.error('Failed to send message');
+            toast.error(error.message || 'Failed to send message');
         } finally {
             setSending(false);
         }
     };
 
-    const getOtherParticipantName = (conversation) => {
-        return conversation.participants
-            ?.filter(p => p !== user?.id)
-            .join(', ') || 'Unknown';
-    };
-
     const filteredConversations = conversations.filter(c =>
-        getOtherParticipantName(c).toLowerCase().includes(searchTerm.toLowerCase())
+        getOtherParticipantName(c, user?.uid).toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -150,7 +201,7 @@ export default function MessagesPage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between mb-0.5">
-                                                <p className="font-semibold truncate">{getOtherParticipantName(conversation)}</p>
+                                                <p className="font-semibold truncate">{getOtherParticipantName(conversation, user?.uid)}</p>
                                                 {conversation.lastMessageAt && (
                                                     <span className={`text-[10px] ${selectedConversation?.id === conversation.id ? 'text-zinc-500' : 'text-zinc-600'
                                                         }`}>
@@ -163,6 +214,11 @@ export default function MessagesPage() {
                                                 {conversation.lastMessage || 'Start a conversation'}
                                             </p>
                                         </div>
+                                        {conversation.unreadCount > 0 && selectedConversation?.id !== conversation.id && (
+                                            <div className="min-w-5 h-5 px-1 rounded-full bg-white text-black text-[10px] font-bold flex items-center justify-center">
+                                                {conversation.unreadCount}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Active Indicator Strip */}
@@ -193,7 +249,7 @@ export default function MessagesPage() {
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-white text-lg leading-tight">
-                                            {getOtherParticipantName(selectedConversation)}
+                                            {getOtherParticipantName(selectedConversation, user?.uid)}
                                         </h3>
                                         <div className="flex items-center gap-1.5">
                                             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
@@ -233,7 +289,7 @@ export default function MessagesPage() {
                                             >
                                                 {!isOwn && (
                                                     <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs border border-white/10 mt-auto mb-1 mr-2 shrink-0">
-                                                        {getOtherParticipantName(selectedConversation).charAt(0)}
+                                                        {getOtherParticipantInitial(selectedConversation, user?.uid)}
                                                     </div>
                                                 )}
                                                 <div className={`max-w-[70%] group relative ${isOwn
