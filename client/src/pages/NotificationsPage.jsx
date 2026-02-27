@@ -49,7 +49,7 @@ export default function NotificationsPage() {
             setNotifications(prev =>
                 prev.map(n => n.id === id ? { ...n, isRead: true } : n)
             );
-        } catch (error) {
+        } catch {
             toast.error('Failed to mark as read');
         }
     };
@@ -59,7 +59,7 @@ export default function NotificationsPage() {
             await api.post('/api/v1/notifications/read-all');
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
             toast.success('All notifications marked as read');
-        } catch (error) {
+        } catch {
             toast.error('Failed to mark all as read');
         }
     };
@@ -69,7 +69,7 @@ export default function NotificationsPage() {
             await api.delete(`/api/v1/notifications/${id}`);
             setNotifications(prev => prev.filter(n => n.id !== id));
             toast.success('Notification deleted');
-        } catch (error) {
+        } catch {
             toast.error('Failed to delete notification');
         }
     };
@@ -140,8 +140,6 @@ export default function NotificationsPage() {
                     <div className="space-y-3">
                         {notifications.map((notification) => {
                             const Icon = TYPE_ICONS[notification.type] || TYPE_ICONS.default;
-                            const priorityColor = PRIORITY_COLORS[notification.priority] || PRIORITY_COLORS.basic;
-
                             return (
                                 <div
                                     key={notification.id}
