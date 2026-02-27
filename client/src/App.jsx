@@ -93,9 +93,15 @@ function App() {
           } />
 
 
-          <Route path="/dashboard/settings" element={
+          <Route path="/dashboard/profile" element={
             <AuthGuard>
               <ProfileSettings />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/settings" element={
+            <AuthGuard>
+              <Navigate to="/dashboard/profile" replace />
             </AuthGuard>
           } />
 
