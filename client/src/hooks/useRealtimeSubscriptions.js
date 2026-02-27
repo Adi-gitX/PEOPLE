@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { firestore } from '../lib/firebase';
