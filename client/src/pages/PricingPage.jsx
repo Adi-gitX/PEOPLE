@@ -5,53 +5,49 @@ import { Check, ArrowRight } from 'lucide-react';
 
 const PLANS = [
     {
-        name: 'Starter',
-        description: 'For individuals getting started',
-        price: 'Free',
+        name: 'Core Marketplace',
+        description: 'For initiators and contributors',
+        price: '$0',
         period: '',
         features: [
             'Access to mission marketplace',
-            'Basic profile & portfolio',
-            'Up to 3 active applications',
-            'Community support',
-            'Standard matching',
+            '0% platform markup on missions',
+            'No credit card required at signup',
+            'Secure realtime messaging',
+            'Escrow-based payments when you hire',
         ],
-        cta: 'Get Started',
+        cta: 'Try for Free',
         href: '/signup',
-        highlighted: false,
-    },
-    {
-        name: 'Pro',
-        description: 'For serious freelancers',
-        price: '$29',
-        period: '/mo',
-        features: [
-            'Everything in Starter',
-            'Unlimited applications',
-            'Priority matching',
-            'Advanced analytics',
-            'Direct messaging',
-            'Featured badge',
-            'Priority support',
-        ],
-        cta: 'Start Free Trial',
-        href: '/signup?plan=pro',
         highlighted: true,
     },
     {
-        name: 'Enterprise',
-        description: 'For teams & agencies',
-        price: 'Custom',
+        name: 'Escrow Funding',
+        description: 'Only when you decide to hire',
+        price: 'On Demand',
         period: '',
         features: [
-            'Everything in Pro',
-            'Team workspace',
-            'API access',
-            'Dedicated manager',
-            'Custom integrations',
-            'SLA guarantee',
+            'Fund mission escrow when ready',
+            'Milestone-based release controls',
+            'Transparent payout breakdown',
+            'Only processor fees may apply',
+            'No PEOPLE commission',
         ],
-        cta: 'Contact Sales',
+        cta: 'View Wallet',
+        href: '/wallet',
+        highlighted: false,
+    },
+    {
+        name: 'Custom Support',
+        description: 'For high-volume organizations',
+        price: 'Contact',
+        period: '',
+        features: [
+            'Custom onboarding',
+            'Dedicated support channel',
+            'Team process guidance',
+            'Optional integration consulting',
+        ],
+        cta: 'Contact Support',
         href: '/contact',
         highlighted: false,
     },
@@ -68,7 +64,7 @@ export default function PricingPage() {
                         Simple pricing
                     </h1>
                     <p className="text-lg text-zinc-400 max-w-md mx-auto">
-                        Start free. Upgrade when you need more.
+                        0% platform markup. No card at signup.
                     </p>
                 </div>
 
