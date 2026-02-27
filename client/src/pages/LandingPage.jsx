@@ -19,21 +19,21 @@ export default function LandingPage() {
                         </h1>
                         <div className="space-y-6 max-w-xl text-lg text-muted-foreground leading-relaxed">
                             <p>
-                                The collaboration platform where top students solve real problems for ambitious initiators.
+                                Hire top freelancers in minutes with 0% platform markup.
                             </p>
                             <p>
-                                No bidding. No profiles. Just guaranteed outcomes through curated teams.
+                                Try for free with no credit card required at signup. Pay only when you fund escrow.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-4 pt-4">
                             <Link to="/signup?mode=initiator">
                                 <Button className="bg-white text-black hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-none">
-                                    Start a Mission
+                                    Hire in 2 Minutes
                                 </Button>
                             </Link>
                             <Link to="/signup?mode=contributor">
                                 <Button variant="outline" className="h-12 px-8 text-base font-semibold border-white/20 hover:bg-white/5 rounded-none text-white">
-                                    Join the Network
+                                    Try for Free
                                 </Button>
                             </Link>
                         </div>
@@ -53,7 +53,7 @@ export default function LandingPage() {
                             <div className="p-6 font-mono text-sm leading-relaxed text-[#eee]">
                                 <div className="flex gap-2 mb-2">
                                     <span className="text-blue-400">➜</span>
-                                    <span>mission init --type=MVP --budget=escrow</span>
+                                    <span>mission init --type=MVP --budget=escrow --fee=0</span>
                                 </div>
                                 <div className="text-muted-foreground/60 mb-1">{'>'} Analyzing mission scope...</div>
                                 <div className="text-muted-foreground/60 mb-1">{'>'} Matching skills: React, Node.js, Systems Design</div>
@@ -139,7 +139,7 @@ export default function LandingPage() {
                                 <div className="text-white font-mono mb-4 text-2xl">05</div>
                                 <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Escrow Payments</h3>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    Funds are held securely and released on milestone completion. Contributors get paid; Initiators get outcomes.
+                                    Funds are held securely and released on milestone completion. No platform markup is added by PEOPLE.
                                 </p>
                             </div>
                         </div>
@@ -147,9 +147,9 @@ export default function LandingPage() {
                         <div className="p-10 rounded-sm border border-white/10 bg-black hover:border-white/20 transition-colors h-full flex flex-col justify-between group">
                             <div>
                                 <div className="text-white font-mono mb-4 text-2xl">06</div>
-                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">Meritocracy</h3>
+                                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">No Card at Signup</h3>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    No public profiles or popularity contests. Reputation is earned through internal work graphs and peer reviews.
+                                    Start using the platform instantly. Add payment details only when you fund an escrow payment.
                                 </p>
                             </div>
                         </div>
@@ -158,7 +158,7 @@ export default function LandingPage() {
                     <div className="mt-20 flex justify-center">
                         <Link to="/signup">
                             <Button className="bg-white text-black hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-none">
-                                Join the Waitlist
+                                Try for Free
                             </Button>
                         </Link>
                     </div>
@@ -170,7 +170,7 @@ export default function LandingPage() {
                 <div className="max-w-2xl mx-auto space-y-8">
                     <h2 className="text-4xl md:text-6xl font-bold tracking-tighter">Ready to start?</h2>
                     <p className="text-lg text-muted-foreground">
-                        Join the network that prioritizes execution and growth.
+                        Try for free. No credit card required.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link to="/signup">
