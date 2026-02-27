@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Navbar } from '../layout/Navbar';
-import { Footer } from '../layout/Footer';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
     LayoutDashboard,
@@ -18,11 +17,9 @@ import {
     Target,
     Briefcase,
     Zap,
-    LogOut,
     ChevronRight,
     AlertTriangle
 } from 'lucide-react';
-import { Button } from '../ui/Button';
 
 const contributorNavItems = [
     { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard/contributor' },
@@ -31,7 +28,7 @@ const contributorNavItems = [
     { label: 'Messages', icon: MessageSquare, href: '/messages' },
     { label: 'Notifications', icon: Bell, href: '/notifications' },
     { label: 'Wallet', icon: Wallet, href: '/wallet' },
-    { label: 'Settings', icon: Settings, href: '/dashboard/settings' },
+    { label: 'Profile', icon: Settings, href: '/dashboard/profile' },
 ];
 
 const initiatorNavItems = [
@@ -41,7 +38,7 @@ const initiatorNavItems = [
     { label: 'Messages', icon: MessageSquare, href: '/messages' },
     { label: 'Notifications', icon: Bell, href: '/notifications' },
     { label: 'Wallet', icon: Wallet, href: '/wallet' },
-    { label: 'Settings', icon: Settings, href: '/dashboard/settings' },
+    { label: 'Profile', icon: Settings, href: '/dashboard/profile' },
 ];
 
 const adminNavItems = [
@@ -53,14 +50,12 @@ const adminNavItems = [
 
 export function DashboardLayout({ children }) {
     const location = useLocation();
-    const { role, user, logout, setRole } = useAuthStore();
+    const { role, user } = useAuthStore();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
 
     // Handle resize to auto-close/open sidebar logic if needed
     useEffect(() => {
         const handleResize = () => {
-            setIsMobile(window.innerWidth < 768);
             if (window.innerWidth >= 768) {
                 setSidebarOpen(false); // Reset on desktop so it follows sticky logic
             }
@@ -155,23 +150,13 @@ export function DashboardLayout({ children }) {
 
                     {/* Footer Actions */}
                     <div className="p-4 border-t border-white/[0.08] bg-black/20">
-                        {role !== 'admin' && (
-                            <Link
-                                to={role === 'initiator' ? '/dashboard/contributor' : '/dashboard/initiator'}
-                                onClick={() => {
-                                    const newRole = role === 'initiator' ? 'contributor' : 'initiator';
-                                    setRole(newRole);
-                                    setSidebarOpen(false);
-                                }}
-                                className="flex items-center justify-between px-4 py-3 rounded-lg text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.05] transition-all border border-transparent hover:border-white/[0.05] mb-2"
-                            >
-                                <span className="flex items-center gap-2">
-                                    <Zap className="w-3.5 h-3.5" />
-                                    Switch to {role === 'initiator' ? 'Contributor' : 'Initiator'}
-                                </span>
-                                <ChevronRight className="w-3 h-3 opacity-50" />
-                            </Link>
-                        )}
+                        <div className="flex items-center justify-between px-4 py-3 rounded-lg text-xs font-medium text-neutral-400 border border-white/[0.05] mb-2">
+                            <span className="flex items-center gap-2">
+                                <Zap className="w-3.5 h-3.5" />
+                                {role === 'admin' ? 'Admin Account' : role === 'initiator' ? 'Initiator Account' : 'Contributor Account'}
+                            </span>
+                            <ChevronRight className="w-3 h-3 opacity-50" />
+                        </div>
 
                         <div className="text-[10px] text-neutral-600 px-4 text-center font-mono mt-2">
                             PEOPLE OS v1.0.0
