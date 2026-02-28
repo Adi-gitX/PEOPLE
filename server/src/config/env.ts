@@ -18,7 +18,18 @@ const envSchema = z.object({
     GMAIL_APP_PASSWORD: z.string().optional(),
     RESEND_API_KEY: z.string().optional(),
     GEMINI_API_KEY: z.string().optional(),
-    FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+    FRONTEND_URL: z.string().min(1).refine((value) => {
+        const origins = value.split(',').map((origin) => origin.trim()).filter(Boolean);
+        if (origins.length === 0) return false;
+        return origins.every((origin) => {
+            try {
+                new URL(origin);
+                return true;
+            } catch {
+                return false;
+            }
+        });
+    }, 'FRONTEND_URL must be a valid URL or comma-separated list of valid URLs').default('http://localhost:5173'),
 });
 
 const parsed = envSchema.safeParse(process.env);
