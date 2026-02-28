@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { api } from '../../lib/api';
@@ -25,11 +25,7 @@ export default function AdminUsersPage() {
     const [filter, setFilter] = useState({ role: '', status: '', search: '' });
     const [total, setTotal] = useState(0);
 
-    useEffect(() => {
-        fetchUsers();
-    }, [filter.role, filter.status]);
-
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -45,14 +41,18 @@ export default function AdminUsersPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filter.role, filter.status]);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
 
     const handleStatusUpdate = async (userId, status) => {
         try {
             await api.patch(`/api/v1/admin/users/${userId}/status`, { status });
             toast.success(`User status updated to ${status}`);
             fetchUsers();
-        } catch (error) {
+        } catch {
             toast.error('Failed to update user status');
         }
     };
@@ -62,7 +62,7 @@ export default function AdminUsersPage() {
             await api.patch(`/api/v1/admin/users/${userId}/verify`);
             toast.success('User verified successfully');
             fetchUsers();
-        } catch (error) {
+        } catch {
             toast.error('Failed to verify user');
         }
     };
