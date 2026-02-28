@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { api } from '../../lib/api';
@@ -21,11 +21,7 @@ export default function AdminDisputesPage() {
     const [resolution, setResolution] = useState('');
     const [favoredParty, setFavoredParty] = useState('');
 
-    useEffect(() => {
-        fetchDisputes();
-    }, [filter]);
-
-    const fetchDisputes = async () => {
+    const fetchDisputes = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -39,7 +35,11 @@ export default function AdminDisputesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filter]);
+
+    useEffect(() => {
+        fetchDisputes();
+    }, [fetchDisputes]);
 
     const handleResolve = async () => {
         if (!resolution.trim() || !favoredParty) {
@@ -57,7 +57,7 @@ export default function AdminDisputesPage() {
             setResolution('');
             setFavoredParty('');
             fetchDisputes();
-        } catch (error) {
+        } catch {
             toast.error('Failed to resolve dispute');
         }
     };
