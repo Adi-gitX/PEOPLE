@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { api } from '../../lib/api';
-import { useAuthStore } from '../../store/useAuthStore';
 import { Clock, CheckCircle2, XCircle, ArrowRight, Briefcase, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { SkeletonApplicationCard, SkeletonStatsCard } from '../../components/ui/Skeleton';
@@ -16,7 +15,6 @@ const STATUS_CONFIG = {
 };
 
 export default function MyApplicationsPage() {
-    const { user } = useAuthStore();
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -52,12 +50,10 @@ export default function MyApplicationsPage() {
 
     const handleWithdraw = async (missionId, applicationId) => {
         try {
-            await api.patch(`/api/v1/missions/${missionId}/applications/${applicationId}`, {
-                status: 'withdrawn'
-            });
+            await api.patch(`/api/v1/missions/${missionId}/applications/${applicationId}/withdraw`);
             toast.success('Application withdrawn');
             fetchApplications();
-        } catch (error) {
+        } catch {
             toast.error('Failed to withdraw application');
         }
     };
