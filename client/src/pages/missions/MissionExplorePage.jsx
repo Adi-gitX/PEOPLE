@@ -3,33 +3,7 @@ import { Link } from 'react-router-dom';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Button } from '../../components/ui/Button';
 import { useMissions } from '../../hooks/useApi';
-import { Search, Filter, Cpu, Database, Layout, Shield, CheckCircle2, X, Smartphone, Palette, Cloud, Code } from 'lucide-react';
-
-
-
-// Mock fallback for when API has no data
-const MOCK_MISSIONS = [
-    {
-        id: 'mock-1',
-        title: "AI Meeting Intelligence",
-        initiatorName: "TechFlow Corp",
-        budgetMax: 2500,
-        type: "backend",
-        complexity: "hard",
-        requiredSkills: ["Python", "OpenAI", "Vector DB"],
-        description: "Build a system to automatically extract action items and sentiment from Zoom transcripts.",
-    },
-    {
-        id: 'mock-2',
-        title: "DeFi Dashboard UI",
-        initiatorName: "FinSafe DAO",
-        budgetMax: 4000,
-        type: "frontend",
-        complexity: "medium",
-        requiredSkills: ["React", "Web3", "Tailwind"],
-        description: "Create a high-performance, real-time dashboard for tracking liquidity pool metrics.",
-    },
-];
+import { Search, Filter, Cpu, Database, Layout, X, Smartphone, Palette, Cloud, Code } from 'lucide-react';
 
 const TYPE_ICONS = {
     frontend: Layout,
@@ -62,9 +36,7 @@ export default function MissionExplorePage() {
         complexity: filters.complexity || undefined,
     });
 
-
-    // Use API data if available, fallback to mock
-    const missions = (apiMissions && apiMissions.length > 0) ? apiMissions : MOCK_MISSIONS;
+    const missions = Array.isArray(apiMissions) ? apiMissions : [];
 
     // Filter by search term locally
 
@@ -85,7 +57,13 @@ export default function MissionExplorePage() {
 
     useEffect(() => {
         refetch();
-    }, [filters.type, filters.complexity]);
+    }, [filters.type, filters.complexity, refetch]);
+
+                {error && (
+                    <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+                        Failed to load missions from the server. Please refresh and try again.
+                    </div>
+                )}
 
     return (
         <PublicLayout>
