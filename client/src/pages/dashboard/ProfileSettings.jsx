@@ -5,13 +5,31 @@ import { api } from '../../lib/api';
 import { toast } from 'sonner';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Button } from '../../components/ui/Button';
-import { User, Link, Github, Linkedin, Globe, Clock, Save, X } from 'lucide-react';
+import { User, Github, Linkedin, Globe, Clock, Save, X, Building2 } from 'lucide-react';
+
+const normalizeOptionalUrl = (value) => {
+    const trimmed = (value || '').trim();
+    return trimmed ? trimmed : null;
+};
+
+const normalizeOptionalString = (value) => {
+    const trimmed = (value || '').trim();
+    return trimmed ? trimmed : undefined;
+};
 
 const ProfileSettings = () => {
-    const { user, profile, refreshProfile } = useAuthStore();
+    const { user, profile, role, refreshProfile } = useAuthStore();
+    const isContributor = role === 'contributor';
+    const isInitiator = role === 'initiator';
+
     const { skills: availableSkills, loading: skillsLoading } = useSkills();
 
-    const [formData, setFormData] = useState({
+    const [commonData, setCommonData] = useState({
+        fullName: '',
+        avatarUrl: '',
+    });
+
+    const [contributorData, setContributorData] = useState({
         headline: '',
         bio: '',
         githubUrl: '',
@@ -20,38 +38,100 @@ const ProfileSettings = () => {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         availabilityHoursPerWeek: 20,
     });
+
+    const [initiatorData, setInitiatorData] = useState({
+        companyName: '',
+        companyUrl: '',
+        companySize: '',
+        industry: '',
+    });
+
     const [loading, setLoading] = useState(false);
 
+    useEffect(() => {
+        setCommonData({
+            fullName: user?.displayName || '',
+            avatarUrl: user?.photoURL || '',
+        });
+    }, [user]);
 
     useEffect(() => {
-        if (profile) {
-            setFormData({
-                headline: profile.headline || '',
-                bio: profile.bio || '',
-                githubUrl: profile.githubUrl || '',
-                linkedinUrl: profile.linkedinUrl || '',
-                portfolioUrl: profile.portfolioUrl || '',
-                timezone: profile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-                availabilityHoursPerWeek: profile.availabilityHoursPerWeek || 20,
-            });
-        }
+        if (!profile) return;
+
+        setContributorData({
+            headline: profile.headline || '',
+            bio: profile.bio || '',
+            githubUrl: profile.githubUrl || '',
+            linkedinUrl: profile.linkedinUrl || '',
+            portfolioUrl: profile.portfolioUrl || '',
+            timezone: profile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+            availabilityHoursPerWeek: profile.availabilityHoursPerWeek ?? 20,
+        });
+
+        setInitiatorData({
+            companyName: profile.companyName || '',
+            companyUrl: profile.companyUrl || '',
+            companySize: profile.companySize || '',
+            industry: profile.industry || '',
+        });
     }, [profile]);
 
-    const handleChange = (e) => {
-        const { name, value, type } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'number' ? parseInt(value) : value
-        }));
+    const buildContributorPayload = () => {
+        const availabilityHours = Number(contributorData.availabilityHoursPerWeek);
+        return {
+            headline: normalizeOptionalString(contributorData.headline),
+            bio: normalizeOptionalString(contributorData.bio),
+            githubUrl: normalizeOptionalUrl(contributorData.githubUrl),
+            linkedinUrl: normalizeOptionalUrl(contributorData.linkedinUrl),
+            portfolioUrl: normalizeOptionalUrl(contributorData.portfolioUrl),
+            timezone: normalizeOptionalString(contributorData.timezone),
+            availabilityHoursPerWeek: Number.isFinite(availabilityHours)
+                ? Math.max(0, Math.min(80, availabilityHours))
+                : 20,
+        };
     };
+
+    const buildInitiatorPayload = () => ({
+        companyName: normalizeOptionalString(initiatorData.companyName),
+        companyUrl: normalizeOptionalUrl(initiatorData.companyUrl),
+        companySize: initiatorData.companySize || undefined,
+        industry: normalizeOptionalString(initiatorData.industry),
+    });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+
         try {
-            await api.patch('/api/v1/contributors/me', formData);
+            const trimmedName = commonData.fullName.trim();
+            const trimmedAvatar = commonData.avatarUrl.trim();
+
+            if (trimmedName && trimmedName.length < 2) {
+                throw new Error('Full name must be at least 2 characters');
+            }
+
+            const userPayload = {};
+            if (trimmedName) {
+                userPayload.fullName = trimmedName;
+            }
+            if (trimmedAvatar) {
+                userPayload.avatarUrl = trimmedAvatar;
+            }
+
+            if (Object.keys(userPayload).length > 0) {
+                await api.patch('/api/v1/users/me', userPayload);
+            }
+
+            if (isContributor) {
+                await api.patch('/api/v1/contributors/me', buildContributorPayload());
+            }
+
+            if (isInitiator) {
+                await api.patch('/api/v1/initiators/me', buildInitiatorPayload());
+            }
+
             await refreshProfile();
-            toast.success('Profile updated!');
+            toast.success('Profile updated successfully');
         } catch (error) {
             console.error('Update profile error:', error);
             toast.error(error.message || 'Failed to update profile');
@@ -61,6 +141,8 @@ const ProfileSettings = () => {
     };
 
     const handleAddSkill = async (skillId) => {
+        if (!isContributor) return;
+
         try {
             await api.post('/api/v1/contributors/me/skills', {
                 skillId,
@@ -69,33 +151,33 @@ const ProfileSettings = () => {
             });
             await refreshProfile();
             toast.success('Skill added!');
-        } catch (error) {
+        } catch {
             toast.error('Failed to add skill');
         }
     };
 
     const handleRemoveSkill = async (skillId) => {
+        if (!isContributor) return;
+
         try {
             await api.delete(`/api/v1/contributors/me/skills/${skillId}`);
             await refreshProfile();
             toast.success('Skill removed');
-        } catch (error) {
+        } catch {
             toast.error('Failed to remove skill');
         }
     };
 
-
-    const userSkillIds = (profile?.skills || []).map(s => s.skillId);
-    const availableToAdd = (availableSkills || []).filter(s => !userSkillIds.includes(s.id));
+    const userSkillIds = (profile?.skills || []).map((s) => s.skillId);
+    const availableToAdd = (availableSkills || []).filter((s) => !userSkillIds.includes(s.id));
 
     return (
         <DashboardLayout>
             <div className="max-w-3xl mx-auto py-8 px-4">
-
                 <div className="flex items-center gap-4 mb-8">
-                    <div className="h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center">
+                    <div className="h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden">
                         {user?.photoURL ? (
-                            <img src={user.photoURL} alt="" className="h-16 w-16 rounded-full" />
+                            <img src={user.photoURL} alt="" className="h-16 w-16 rounded-full object-cover" />
                         ) : (
                             <User className="h-8 w-8 text-zinc-500" />
                         )}
@@ -106,118 +188,199 @@ const ProfileSettings = () => {
                     </div>
                 </div>
 
-
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="border border-white/10 rounded-lg p-6 space-y-4">
-                        <h2 className="text-lg font-semibold mb-4">Professional Info</h2>
+                        <h2 className="text-lg font-semibold mb-4">Account</h2>
 
                         <div>
-                            <label className="block text-sm text-zinc-400 mb-1">Headline</label>
+                            <label className="block text-sm text-zinc-400 mb-1">Full Name</label>
                             <input
                                 type="text"
-                                name="headline"
-                                value={formData.headline}
-                                onChange={handleChange}
-                                placeholder="Full-Stack Developer | React & Node.js"
-                                maxLength={255}
+                                value={commonData.fullName}
+                                onChange={(e) => setCommonData((prev) => ({ ...prev, fullName: e.target.value }))}
+                                placeholder="John Doe"
                                 className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm text-zinc-400 mb-1">Bio</label>
-                            <textarea
-                                name="bio"
-                                value={formData.bio}
-                                onChange={handleChange}
-                                placeholder="Tell us about yourself, your experience, and what you're passionate about..."
-                                rows={4}
-                                maxLength={2000}
-                                className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20 resize-none"
+                            <label className="block text-sm text-zinc-400 mb-1">Avatar URL (optional)</label>
+                            <input
+                                type="url"
+                                value={commonData.avatarUrl}
+                                onChange={(e) => setCommonData((prev) => ({ ...prev, avatarUrl: e.target.value }))}
+                                placeholder="https://example.com/avatar.png"
+                                className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
                             />
-                            <p className="text-xs text-zinc-600 mt-1">{formData.bio.length}/2000</p>
                         </div>
                     </div>
 
-                    <div className="border border-white/10 rounded-lg p-6 space-y-4">
-                        <h2 className="text-lg font-semibold mb-4">Links</h2>
+                    {isContributor && (
+                        <>
+                            <div className="border border-white/10 rounded-lg p-6 space-y-4">
+                                <h2 className="text-lg font-semibold mb-4">Professional Info</h2>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="flex items-center gap-2 text-sm text-zinc-400 mb-1">
-                                    <Github className="h-4 w-4" /> GitHub
-                                </label>
-                                <input
-                                    type="url"
-                                    name="githubUrl"
-                                    value={formData.githubUrl}
-                                    onChange={handleChange}
-                                    placeholder="https://github.com/username"
-                                    className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
-                                />
+                                <div>
+                                    <label className="block text-sm text-zinc-400 mb-1">Headline</label>
+                                    <input
+                                        type="text"
+                                        value={contributorData.headline}
+                                        onChange={(e) => setContributorData((prev) => ({ ...prev, headline: e.target.value }))}
+                                        placeholder="Full-Stack Developer | React & Node.js"
+                                        maxLength={255}
+                                        className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm text-zinc-400 mb-1">Bio</label>
+                                    <textarea
+                                        value={contributorData.bio}
+                                        onChange={(e) => setContributorData((prev) => ({ ...prev, bio: e.target.value }))}
+                                        placeholder="Tell us about yourself, your experience, and what you're passionate about..."
+                                        rows={4}
+                                        maxLength={2000}
+                                        className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20 resize-none"
+                                    />
+                                    <p className="text-xs text-zinc-600 mt-1">{contributorData.bio.length}/2000</p>
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="flex items-center gap-2 text-sm text-zinc-400 mb-1">
-                                    <Linkedin className="h-4 w-4" /> LinkedIn
-                                </label>
-                                <input
-                                    type="url"
-                                    name="linkedinUrl"
-                                    value={formData.linkedinUrl}
-                                    onChange={handleChange}
-                                    placeholder="https://linkedin.com/in/username"
-                                    className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
-                                />
+                            <div className="border border-white/10 rounded-lg p-6 space-y-4">
+                                <h2 className="text-lg font-semibold mb-4">Links</h2>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="flex items-center gap-2 text-sm text-zinc-400 mb-1">
+                                            <Github className="h-4 w-4" /> GitHub
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={contributorData.githubUrl}
+                                            onChange={(e) => setContributorData((prev) => ({ ...prev, githubUrl: e.target.value }))}
+                                            placeholder="https://github.com/username"
+                                            className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="flex items-center gap-2 text-sm text-zinc-400 mb-1">
+                                            <Linkedin className="h-4 w-4" /> LinkedIn
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={contributorData.linkedinUrl}
+                                            onChange={(e) => setContributorData((prev) => ({ ...prev, linkedinUrl: e.target.value }))}
+                                            placeholder="https://linkedin.com/in/username"
+                                            className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
+                                        />
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <label className="flex items-center gap-2 text-sm text-zinc-400 mb-1">
+                                            <Globe className="h-4 w-4" /> Portfolio
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={contributorData.portfolioUrl}
+                                            onChange={(e) => setContributorData((prev) => ({ ...prev, portfolioUrl: e.target.value }))}
+                                            placeholder="https://yourportfolio.com"
+                                            className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="md:col-span-2">
-                                <label className="flex items-center gap-2 text-sm text-zinc-400 mb-1">
-                                    <Globe className="h-4 w-4" /> Portfolio
-                                </label>
-                                <input
-                                    type="url"
-                                    name="portfolioUrl"
-                                    value={formData.portfolioUrl}
-                                    onChange={handleChange}
-                                    placeholder="https://yourportfolio.com"
-                                    className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
-                                />
+                            <div className="border border-white/10 rounded-lg p-6 space-y-4">
+                                <h2 className="text-lg font-semibold mb-4">Availability</h2>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="flex items-center gap-2 text-sm text-zinc-400 mb-1">
+                                            <Clock className="h-4 w-4" /> Hours per week
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={contributorData.availabilityHoursPerWeek}
+                                            onChange={(e) => setContributorData((prev) => ({ ...prev, availabilityHoursPerWeek: e.target.value }))}
+                                            min={0}
+                                            max={80}
+                                            className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm text-zinc-400 mb-1">Timezone</label>
+                                        <input
+                                            type="text"
+                                            value={contributorData.timezone}
+                                            onChange={(e) => setContributorData((prev) => ({ ...prev, timezone: e.target.value }))}
+                                            className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </>
+                    )}
 
-                    <div className="border border-white/10 rounded-lg p-6 space-y-4">
-                        <h2 className="text-lg font-semibold mb-4">Availability</h2>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="flex items-center gap-2 text-sm text-zinc-400 mb-1">
-                                    <Clock className="h-4 w-4" /> Hours per week
-                                </label>
-                                <input
-                                    type="number"
-                                    name="availabilityHoursPerWeek"
-                                    value={formData.availabilityHoursPerWeek}
-                                    onChange={handleChange}
-                                    min={0}
-                                    max={80}
-                                    className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-white/20"
-                                />
-                            </div>
+                    {isInitiator && (
+                        <div className="border border-white/10 rounded-lg p-6 space-y-4">
+                            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <Building2 className="h-4 w-4" /> Organization
+                            </h2>
 
                             <div>
-                                <label className="block text-sm text-zinc-400 mb-1">Timezone</label>
+                                <label className="block text-sm text-zinc-400 mb-1">Company Name</label>
                                 <input
                                     type="text"
-                                    name="timezone"
-                                    value={formData.timezone}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                                    value={initiatorData.companyName}
+                                    onChange={(e) => setInitiatorData((prev) => ({ ...prev, companyName: e.target.value }))}
+                                    placeholder="Acme Labs"
+                                    className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
                                 />
                             </div>
+
+                            <div>
+                                <label className="block text-sm text-zinc-400 mb-1">Company URL</label>
+                                <input
+                                    type="url"
+                                    value={initiatorData.companyUrl}
+                                    onChange={(e) => setInitiatorData((prev) => ({ ...prev, companyUrl: e.target.value }))}
+                                    placeholder="https://acme.com"
+                                    className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
+                                />
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm text-zinc-400 mb-1">Company Size</label>
+                                    <select
+                                        value={initiatorData.companySize}
+                                        onChange={(e) => setInitiatorData((prev) => ({ ...prev, companySize: e.target.value }))}
+                                        className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                                    >
+                                        <option value="">Select size</option>
+                                        <option value="1-10">1-10</option>
+                                        <option value="11-50">11-50</option>
+                                        <option value="51-200">51-200</option>
+                                        <option value="201-500">201-500</option>
+                                        <option value="500+">500+</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm text-zinc-400 mb-1">Industry</label>
+                                    <input
+                                        type="text"
+                                        value={initiatorData.industry}
+                                        onChange={(e) => setInitiatorData((prev) => ({ ...prev, industry: e.target.value }))}
+                                        placeholder="SaaS"
+                                        className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
+                                    />
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <Button type="submit" className="w-full" isLoading={loading}>
                         <Save className="h-4 w-4 mr-2" />
@@ -225,52 +388,53 @@ const ProfileSettings = () => {
                     </Button>
                 </form>
 
+                {isContributor && (
+                    <div className="border border-white/10 rounded-lg p-6 mt-6">
+                        <h2 className="text-lg font-semibold mb-4">Skills</h2>
 
-                <div className="border border-white/10 rounded-lg p-6 mt-6">
-                    <h2 className="text-lg font-semibold mb-4">Skills</h2>
-
-
-                    <div className="flex flex-wrap gap-2 mb-4">
-                        {(profile?.skills || []).length === 0 ? (
-                            <p className="text-zinc-500 text-sm">No skills added yet</p>
-                        ) : (
-                            profile?.skills.map((skill) => (
-                                <span
-                                    key={skill.skillId}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-zinc-800 rounded-full text-sm"
-                                >
-                                    {skill.skillName}
-                                    <button
-                                        onClick={() => handleRemoveSkill(skill.skillId)}
-                                        className="ml-1 hover:text-red-400"
-                                    >
-                                        <X className="h-3 w-3" />
-                                    </button>
-                                </span>
-                            ))
-                        )}
-                    </div>
-
-
-                    <div>
-                        <p className="text-sm text-zinc-500 mb-2">Add skills:</p>
-                        <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                            {skillsLoading ? (
-                                <span className="text-zinc-500 text-sm">Loading skills...</span>
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            {(profile?.skills || []).length === 0 ? (
+                                <p className="text-zinc-500 text-sm">No skills added yet</p>
                             ) : (
-                                availableToAdd.slice(0, 20).map((skill) => (
-                                    <button
-                                        key={skill.id}
-                                        onClick={() => handleAddSkill(skill.id)}
-                                        className="px-3 py-1.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-colors"
+                                profile.skills.map((skill) => (
+                                    <span
+                                        key={skill.skillId}
+                                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-zinc-800 rounded-full text-sm"
                                     >
-                                        + {skill.name}
-                                    </button>
+                                        {skill.skillName}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveSkill(skill.skillId)}
+                                            className="ml-1 hover:text-red-400"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </span>
                                 ))
                             )}
                         </div>
+
+                        <div>
+                            <p className="text-sm text-zinc-500 mb-2">Add skills:</p>
+                            <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                                {skillsLoading ? (
+                                    <span className="text-zinc-500 text-sm">Loading skills...</span>
+                                ) : (
+                                    availableToAdd.slice(0, 20).map((skill) => (
+                                        <button
+                                            key={skill.id}
+                                            type="button"
+                                            onClick={() => handleAddSkill(skill.id)}
+                                            className="px-3 py-1.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-colors"
+                                        >
+                                            + {skill.name}
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </DashboardLayout>
     );
