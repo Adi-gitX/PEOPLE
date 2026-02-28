@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { api } from '../../lib/api';
@@ -23,11 +23,7 @@ export default function AdminMissionsPage() {
     const [filter, setFilter] = useState({ status: '', search: '' });
     const [total, setTotal] = useState(0);
 
-    useEffect(() => {
-        fetchMissions();
-    }, [filter.status]);
-
-    const fetchMissions = async () => {
+    const fetchMissions = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -42,7 +38,11 @@ export default function AdminMissionsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filter.status]);
+
+    useEffect(() => {
+        fetchMissions();
+    }, [fetchMissions]);
 
     const handleCancel = async (missionId) => {
         if (!confirm('Are you sure you want to cancel this mission?')) return;
@@ -51,7 +51,7 @@ export default function AdminMissionsPage() {
             await api.patch(`/api/v1/admin/missions/${missionId}/cancel`);
             toast.success('Mission cancelled');
             fetchMissions();
-        } catch (error) {
+        } catch {
             toast.error('Failed to cancel mission');
         }
     };
