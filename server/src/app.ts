@@ -24,26 +24,31 @@ import { invoicesRoutes } from './modules/invoices/index.js';
 import { teamsRoutes } from './modules/teams/index.js';
 import { portfolioRoutes } from './modules/portfolio/index.js';
 import { favoritesRoutes } from './modules/favorites/index.js';
+import { escrowRoutes } from './modules/escrow/index.js';
+import { walletRoutes } from './modules/wallet/index.js';
+import { leadsRoutes } from './modules/leads/index.js';
 
 const app: Express = express();
 
 app.use(securityHeaders);
 
-const allowedOrigins = [
-    env.FRONTEND_URL,
+const configuredOrigins = env.FRONTEND_URL
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+const allowedOrigins = new Set([
+    ...configuredOrigins,
     'https://peoplemissions.vercel.app',
     'http://localhost:5173',
     'http://localhost:3000',
-].filter(Boolean);
+]);
 
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(null, true);
-        }
+        if (allowedOrigins.has(origin)) return callback(null, true);
+        return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -86,6 +91,7 @@ app.use('/api/v1/notifications', notificationsRoutes);
 app.use('/api/v1/conversations', messagesRoutes);
 app.use('/api/v1/reviews', reviewsRoutes);
 app.use('/api/v1/contact', contactRoutes);
+app.use('/api/v1/leads', leadsRoutes);
 app.use('/api/v1/auth/otp', otpLimiter, otpRoutes);
 app.use('/api/v1/proposals', proposalsRoutes);
 app.use('/api/v1/contracts', contractsRoutes);
@@ -97,6 +103,8 @@ app.use('/api/v1/disputes', disputesRoutes);
 app.use('/api/v1/teams', teamsRoutes);
 app.use('/api/v1/portfolio', portfolioRoutes);
 app.use('/api/v1/favorites', favoritesRoutes);
+app.use('/api/v1/escrow', paymentLimiter, escrowRoutes);
+app.use('/api/v1/wallet', authLimiter, walletRoutes);
 app.use('/api/v1/admin', authLimiter, adminRoutes);
 
 app.use((_req: Request, res: Response) => {
@@ -108,6 +116,15 @@ app.use((_req: Request, res: Response) => {
 });
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    if (err.message === 'Not allowed by CORS') {
+        res.status(403).json({
+            success: false,
+            error: 'Forbidden',
+            message: 'Origin not allowed',
+        });
+        return;
+    }
+
     res.status(500).json({
         success: false,
         error: 'Internal Server Error',
