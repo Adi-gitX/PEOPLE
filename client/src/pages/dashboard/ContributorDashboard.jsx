@@ -3,9 +3,8 @@ import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Button } from '../../components/ui/Button';
 import { Switch } from '../../components/ui/Switch';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useCurrentUser } from '../../hooks/useApi';
 import { api } from '../../lib/api';
-import { CheckCircle2, TrendingUp, Award, Clock, Shield, Search, Loader2, ArrowUpRight, Zap, RefreshCw, Link as LinkIcon, Compass, MessageSquare, Wallet, FileText } from 'lucide-react';
+import { CheckCircle2, Award, Clock, Shield, Loader2, Zap, RefreshCw, Compass, MessageSquare, Wallet, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
@@ -35,7 +34,6 @@ const MATCHING_TIMELINE = [
 
 export default function ContributorDashboard() {
     const { user, profile, refreshProfile } = useAuthStore();
-    const { data: userData, loading } = useCurrentUser();
     const [isLooking, setIsLooking] = useState(false);
     const [updating, setUpdating] = useState(false);
 
@@ -84,18 +82,12 @@ export default function ContributorDashboard() {
                     description: "Your profile is now hidden from matching."
                 });
             }
-        } catch (error) {
+        } catch {
             setIsLooking(!checked);
             toast.error("Failed to update status");
         } finally {
             setUpdating(false);
         }
-    };
-
-    const handleAction = (action) => {
-        toast.info("Module Loading", {
-            description: `Initializing ${action} module...`
-        });
     };
 
     return (
@@ -140,7 +132,7 @@ export default function ContributorDashboard() {
                                 <p className="text-xs text-zinc-500">Add skills, links, and bio to increase match power</p>
                             </div>
                         </div>
-                        <Link to="/dashboard/settings">
+                        <Link to="/dashboard/profile">
                             <Button size="sm" variant="outline" className="text-xs">
                                 Complete Profile
                             </Button>
@@ -224,7 +216,7 @@ export default function ContributorDashboard() {
                                         <span className="text-neutral-300">Identity Verification</span>
                                         <CheckCircle2 className="w-4 h-4 text-green-500" />
                                     </div>
-                                    <Link to="/dashboard/settings" className="flex items-center justify-between text-sm p-3 rounded-lg bg-black border border-white/[0.08] group hover:border-white/20 transition-colors">
+                                    <Link to="/dashboard/profile" className="flex items-center justify-between text-sm p-3 rounded-lg bg-black border border-white/[0.08] group hover:border-white/20 transition-colors">
                                         <span className="text-neutral-300">Complete Profile</span>
                                         {matchPower >= 50 ? (
                                             <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -237,7 +229,7 @@ export default function ContributorDashboard() {
                                         {(profile?.skills || []).length >= 3 ? (
                                             <CheckCircle2 className="w-4 h-4 text-green-500" />
                                         ) : (
-                                            <Link to="/dashboard/settings">
+                                            <Link to="/dashboard/profile">
                                                 <span className="text-xs font-medium text-white px-2 py-1 bg-white/10 rounded hover:bg-white/20 transition-colors">Add</span>
                                             </Link>
                                         )}
