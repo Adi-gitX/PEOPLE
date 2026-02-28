@@ -48,7 +48,7 @@ export default function WorkflowsPage() {
 
                 {/* Steps */}
                 <div className="space-y-0 mb-20 bg-zinc-900/20 rounded-2xl border border-white/5 overflow-hidden backdrop-blur-sm">
-                    {STEPS.map((step, idx) => (
+                    {STEPS.map((step) => (
                         <div
                             key={step.number}
                             className="flex flex-col md:flex-row gap-8 p-10 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors"
