@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { api } from '../../lib/api';
@@ -21,11 +21,7 @@ export default function MissionApplicationsPage() {
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(null);
 
-    useEffect(() => {
-        fetchData();
-    }, [missionId]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const [missionRes, appsRes] = await Promise.all([
                 api.get(`/api/v1/missions/${missionId}`),
@@ -39,7 +35,11 @@ export default function MissionApplicationsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [missionId]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const handleStatusUpdate = async (applicationId, status) => {
         setProcessing(applicationId);
@@ -47,24 +47,32 @@ export default function MissionApplicationsPage() {
             await api.patch(`/api/v1/missions/${missionId}/applications/${applicationId}`, { status });
             toast.success(`Application ${status}`);
             fetchData();
-        } catch (error) {
+        } catch {
             toast.error('Failed to update application');
         } finally {
             setProcessing(null);
         }
     };
 
-    const handleAssign = async (contributorId) => {
-        setProcessing(contributorId);
+    const handleAcceptAndAssign = async (application) => {
+        setProcessing(`accept-${application.id}`);
         try {
+            await api.patch(`/api/v1/missions/${missionId}/applications/${application.id}`, { status: 'accepted' });
             await api.post(`/api/v1/missions/${missionId}/assign`, {
-                contributorId,
+                contributorId: application.contributorId,
                 role: 'lead',
             });
-            toast.success('Contributor assigned to mission!');
+
+            // Bootstrap direct chat after assignment
+            try {
+                await api.post('/api/v1/conversations/start', { recipientId: application.contributorId });
+            } catch {
+                // Assignment succeeded; chat can be started manually later
+            }
+            toast.success('Contributor accepted and assigned');
             fetchData();
-        } catch (error) {
-            toast.error('Failed to assign contributor');
+        } catch {
+            toast.error('Failed to accept and assign contributor');
         } finally {
             setProcessing(null);
         }
@@ -126,7 +134,9 @@ export default function MissionApplicationsPage() {
                         {applications.map((application) => {
                             const StatusIcon = STATUS_CONFIG[application.status]?.icon || Clock;
                             const statusConfig = STATUS_CONFIG[application.status] || STATUS_CONFIG.pending;
-                            const isProcessing = processing === application.id || processing === application.contributorId;
+                            const isProcessing = processing === application.id
+                                || processing === application.contributorId
+                                || processing === `accept-${application.id}`;
 
                             return (
                                 <div
@@ -204,10 +214,7 @@ export default function MissionApplicationsPage() {
                                             {application.status === 'shortlisted' && (
                                                 <>
                                                     <button
-                                                        onClick={() => {
-                                                            handleStatusUpdate(application.id, 'accepted');
-                                                            handleAssign(application.contributorId);
-                                                        }}
+                                                        onClick={() => handleAcceptAndAssign(application)}
                                                         disabled={isProcessing}
                                                         className="px-4 py-2 text-sm bg-green-500 text-black rounded-lg hover:bg-green-400 transition-all font-bold disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
                                                     >
