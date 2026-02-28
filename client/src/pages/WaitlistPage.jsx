@@ -3,6 +3,7 @@ import { PublicLayout } from '../components/layout/PublicLayout';
 import { Button } from '../components/ui/Button';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '../lib/api';
 
 export default function WaitlistPage() {
     const [email, setEmail] = useState('');
@@ -15,10 +16,20 @@ export default function WaitlistPage() {
         if (!email) return;
 
         setLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setLoading(false);
-        setSubmitted(true);
-        toast.success('You\'re on the list!');
+        try {
+            const response = await api.post('/api/v1/leads/waitlist', {
+                email: email.trim(),
+                role,
+                source: 'waitlist_page',
+            });
+
+            setSubmitted(true);
+            toast.success(response?.data?.message || 'You are on the waitlist.');
+        } catch (error) {
+            toast.error(error.message || 'Failed to join waitlist. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (submitted) {
@@ -29,8 +40,8 @@ export default function WaitlistPage() {
                         <CheckCircle2 className="w-8 h-8 text-white" />
                     </div>
                     <h1 className="text-4xl font-bold tracking-tight mb-4">You're in</h1>
-                    <p className="text-zinc-400 mb-2">We'll email you when your spot opens.</p>
-                    <p className="text-sm text-zinc-600 font-mono">Position #4,892</p>
+                    <p className="text-zinc-400 mb-2">We&apos;ll email you when your spot opens.</p>
+                    <p className="text-sm text-zinc-600 font-mono">Role: {role}</p>
                 </div>
             </PublicLayout>
         );
