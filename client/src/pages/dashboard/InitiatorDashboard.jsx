@@ -7,7 +7,7 @@ import { useMyMissions } from '../../hooks/useApi';
 
 export default function InitiatorDashboard() {
     const { user } = useAuthStore();
-    const { data: missions, loading, error } = useMyMissions();
+    const { data: missions, loading } = useMyMissions();
 
 
     const activeMissions = missions?.filter(m => m.status === 'in_progress') || [];
