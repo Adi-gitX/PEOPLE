@@ -7,16 +7,33 @@ import { SkeletonCard } from '../components/ui/Skeleton';
 import { toast } from 'sonner';
 
 const TYPE_LABELS = {
-    deposit: { label: 'Deposit', icon: ArrowDownRight, color: 'text-green-500' },
-    release: { label: 'Earning', icon: ArrowUpRight, color: 'text-green-500' },
+    earning: { label: 'Earning', icon: ArrowUpRight, color: 'text-green-500' },
+    withdrawal: { label: 'Withdrawal', icon: ArrowDownRight, color: 'text-red-400' },
     refund: { label: 'Refund', icon: ArrowDownRight, color: 'text-yellow-500' },
-    platform_fee: { label: 'Fee', icon: Building, color: 'text-zinc-400' },
+    bonus: { label: 'Bonus', icon: ArrowUpRight, color: 'text-blue-400' },
+    fee: { label: 'Processor Fee', icon: Building, color: 'text-zinc-400' },
+    adjustment: { label: 'Adjustment', icon: Building, color: 'text-zinc-400' },
 };
 
 export default function WalletPage() {
     const [balance, setBalance] = useState({ available: 0, pending: 0, total: 0 });
     const [transactions, setTransactions] = useState([]);
+    const [pendingWithdrawals, setPendingWithdrawals] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [withdrawOpen, setWithdrawOpen] = useState(false);
+    const [withdrawing, setWithdrawing] = useState(false);
+    const [withdrawForm, setWithdrawForm] = useState({
+        amount: '',
+        payoutMethod: 'bank_transfer',
+        payoutDetails: '',
+    });
+
+    const toDate = (value) => {
+        if (!value) return null;
+        if (value instanceof Date) return value;
+        if (value?.seconds) return new Date(value.seconds * 1000);
+        return new Date(value);
+    };
 
     useEffect(() => {
         fetchData();
@@ -24,23 +41,67 @@ export default function WalletPage() {
 
     const fetchData = async () => {
         try {
-            const [balanceRes, historyRes] = await Promise.all([
-                api.get('/api/v1/payments/balance'),
-                api.get('/api/v1/payments/history'),
+            const [summaryRes, transactionsRes] = await Promise.all([
+                api.get('/api/v1/wallet/summary'),
+                api.get('/api/v1/wallet/transactions?limit=50'),
             ]);
-            setBalance(balanceRes.data || { available: 0, pending: 0, total: 0 });
-            setTransactions(historyRes.data?.transactions || []);
+
+            const summary = summaryRes.data || {};
+            const wallet = summary.wallet || {};
+
+            setBalance({
+                available: wallet.availableBalance || 0,
+                pending: wallet.pendingBalance || 0,
+                total: wallet.totalEarnings || 0,
+            });
+            setPendingWithdrawals(summary.pendingWithdrawals || 0);
+            setTransactions(Array.isArray(transactionsRes.data) ? transactionsRes.data : []);
         } catch (error) {
             console.error('Failed to fetch wallet data:', error);
+            toast.error('Failed to load wallet data');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleWithdraw = () => {
-        toast.info('Withdrawals coming soon!', {
-            description: 'Bank account linking will be available in the next update.',
-        });
+    const handleWithdrawSubmit = async (e) => {
+        e.preventDefault();
+        const amount = Number(withdrawForm.amount);
+
+        if (!Number.isFinite(amount) || amount < 10) {
+            toast.error('Minimum withdrawal is $10');
+            return;
+        }
+
+        if (amount > balance.available) {
+            toast.error('Insufficient available balance');
+            return;
+        }
+
+        if (!withdrawForm.payoutDetails.trim()) {
+            toast.error('Please provide payout details');
+            return;
+        }
+
+        setWithdrawing(true);
+        try {
+            await api.post('/api/v1/wallet/withdraw', {
+                amount,
+                payoutMethod: withdrawForm.payoutMethod,
+                payoutDetails: {
+                    account: withdrawForm.payoutDetails.trim(),
+                },
+            });
+
+            toast.success('Withdrawal request submitted');
+            setWithdrawOpen(false);
+            setWithdrawForm({ amount: '', payoutMethod: 'bank_transfer', payoutDetails: '' });
+            fetchData();
+        } catch (error) {
+            toast.error(error.message || 'Failed to submit withdrawal');
+        } finally {
+            setWithdrawing(false);
+        }
     };
 
     return (
@@ -75,11 +136,11 @@ export default function WalletPage() {
                                 </div>
                                 <p className="text-4xl font-bold text-white tracking-tight">${balance.available.toLocaleString()}</p>
                                 <Button
-                                    onClick={handleWithdraw}
+                                    onClick={() => setWithdrawOpen(true)}
                                     className="mt-6 w-full bg-green-500 hover:bg-green-600 text-white border-0 shadow-lg shadow-green-500/20"
-                                    disabled={balance.available === 0}
+                                    disabled={balance.available < 10}
                                 >
-                                    Withdraw Funds
+                                    Request Withdrawal
                                 </Button>
                             </div>
                         </div>
@@ -93,6 +154,11 @@ export default function WalletPage() {
                             </div>
                             <p className="text-4xl font-bold text-white tracking-tight">${balance.pending.toLocaleString()}</p>
                             <p className="text-sm text-neutral-500 mt-2">In escrow for active missions</p>
+                            {pendingWithdrawals > 0 && (
+                                <p className="text-xs text-neutral-500 mt-3">
+                                    Pending withdrawals: ${pendingWithdrawals.toLocaleString()}
+                                </p>
+                            )}
                         </div>
 
                         <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-8 hover:border-white/[0.15] transition-all">
@@ -109,11 +175,8 @@ export default function WalletPage() {
                 )}
 
                 <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl overflow-hidden">
-                    <div className="p-6 border-b border-white/[0.08] flex items-center justify-between">
+                    <div className="p-6 border-b border-white/[0.08]">
                         <h2 className="text-lg font-bold tracking-tight text-white">Transaction History</h2>
-                        <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white">
-                            View All
-                        </Button>
                     </div>
 
                     {loading ? (
@@ -133,8 +196,9 @@ export default function WalletPage() {
                     ) : (
                         <div className="divide-y divide-white/[0.05]">
                             {transactions.map((tx) => {
-                                const typeConfig = TYPE_LABELS[tx.type] || TYPE_LABELS.release;
+                                const typeConfig = TYPE_LABELS[tx.type] || TYPE_LABELS.earning;
                                 const Icon = typeConfig.icon;
+                                const isPositive = (tx.amount || 0) > 0;
 
                                 return (
                                     <div key={tx.id} className="p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
@@ -148,11 +212,11 @@ export default function WalletPage() {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className={`font-bold tracking-tight text-lg ${tx.type === 'release' ? 'text-green-500' : 'text-white'}`}>
-                                                {tx.type === 'release' ? '+' : ''}${tx.amount?.toLocaleString()}
+                                            <p className={`font-bold tracking-tight text-lg ${isPositive ? 'text-green-500' : 'text-white'}`}>
+                                                {isPositive ? '+' : ''}${Math.abs(tx.amount || 0).toLocaleString()}
                                             </p>
                                             <p className="text-xs text-neutral-600 font-medium">
-                                                {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : ''}
+                                                {tx.createdAt ? toDate(tx.createdAt)?.toLocaleDateString() : ''}
                                             </p>
                                         </div>
                                     </div>
@@ -161,6 +225,78 @@ export default function WalletPage() {
                         </div>
                     )}
                 </div>
+
+                {withdrawOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/80" onClick={() => setWithdrawOpen(false)} />
+                        <form
+                            onSubmit={handleWithdrawSubmit}
+                            className="relative w-full max-w-md bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 space-y-4"
+                        >
+                            <h3 className="text-xl font-bold text-white tracking-tight">Request Withdrawal</h3>
+                            <p className="text-sm text-neutral-500">
+                                Available: ${balance.available.toLocaleString()} (minimum $10)
+                            </p>
+
+                            <div>
+                                <label className="block text-sm text-neutral-400 mb-2">Amount (USD)</label>
+                                <input
+                                    type="number"
+                                    min="10"
+                                    step="0.01"
+                                    value={withdrawForm.amount}
+                                    onChange={(e) => setWithdrawForm((prev) => ({ ...prev, amount: e.target.value }))}
+                                    required
+                                    className="w-full h-11 px-3 bg-black border border-white/10 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-neutral-400 mb-2">Payout Method</label>
+                                <select
+                                    value={withdrawForm.payoutMethod}
+                                    onChange={(e) => setWithdrawForm((prev) => ({ ...prev, payoutMethod: e.target.value }))}
+                                    className="w-full h-11 px-3 bg-black border border-white/10 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                                >
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="paypal">PayPal</option>
+                                    <option value="stripe">Stripe</option>
+                                    <option value="payoneer">Payoneer</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-neutral-400 mb-2">Payout Details</label>
+                                <input
+                                    type="text"
+                                    value={withdrawForm.payoutDetails}
+                                    onChange={(e) => setWithdrawForm((prev) => ({ ...prev, payoutDetails: e.target.value }))}
+                                    required
+                                    placeholder="Account email or bank reference"
+                                    className="w-full h-11 px-3 bg-black border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="flex-1 border-white/10"
+                                    onClick={() => setWithdrawOpen(false)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    className="flex-1 bg-white text-black hover:bg-zinc-200"
+                                    isLoading={withdrawing}
+                                >
+                                    Submit
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                )}
             </div>
         </DashboardLayout>
     );
