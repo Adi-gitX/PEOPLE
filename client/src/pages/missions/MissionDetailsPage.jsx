@@ -6,9 +6,10 @@ import { useMission, useSkills } from '../../hooks/useApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { api } from '../../lib/api';
 import { toast } from 'sonner';
+import { buildMissionApplicationPayload } from './missionApplicationPayload';
 import {
     CheckCircle2, Clock, Globe, Shield, Users, ArrowLeft, Star, Zap,
-    ChevronRight, Play, Box, Loader2, AlertCircle, Send
+    ChevronRight, Play, Box, Loader2, Send
 } from 'lucide-react';
 
 export default function MissionDetailsPage() {
@@ -61,7 +62,9 @@ export default function MissionDetailsPage() {
 
         setApplying(true);
         try {
-            await api.post(`/api/v1/missions/${id}/apply`, applicationData);
+            const payload = buildMissionApplicationPayload(applicationData);
+
+            await api.post(`/api/v1/missions/${id}/apply`, payload);
             toast.success('Application submitted!');
             setShowApplyModal(false);
         } catch (error) {
@@ -84,20 +87,6 @@ export default function MissionDetailsPage() {
 
 
     if (error || !mission) {
-        // Fallback to mock mission for demo
-        const mockMission = {
-            title: "AI Meeting Intelligence",
-            description: "Build a system to automatically extract action items and sentiment from Zoom transcripts. This mission involves building the pipeline that connects Zoom webhooks, processes audio via Whisper/GPT-4, and formats the output for a structured Notion database.",
-            type: "backend",
-            complexity: "hard",
-            budgetMin: 1500,
-            budgetMax: 2500,
-            estimatedDurationDays: 14,
-            requiredSkills: ["Python", "OpenAI", "Node.js"],
-            initiatorName: "TechFlow Corp",
-            status: "open",
-        };
-
         return (
             <PublicLayout>
                 <div className="pt-8 pb-20 px-6 max-w-[1400px] mx-auto">
@@ -106,12 +95,12 @@ export default function MissionDetailsPage() {
                         Back to Marketplace
                     </Link>
 
-                    <div className="p-6 mb-8 rounded-lg border border-yellow-500/20 bg-yellow-500/5 flex items-center gap-3">
-                        <AlertCircle className="w-5 h-5 text-yellow-500" />
-                        <span className="text-sm text-yellow-400">This is demo data. Create missions via the Initiator dashboard.</span>
+                    <div className="p-8 rounded-xl border border-red-500/20 bg-red-500/10">
+                        <h2 className="text-xl font-bold text-white mb-2">Mission unavailable</h2>
+                        <p className="text-sm text-red-200">
+                            We could not load this mission. It may have been removed or you may not have access.
+                        </p>
                     </div>
-
-                    {renderMissionContent(mockMission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role, mockMission.requiredSkills || [])}
                 </div>
             </PublicLayout>
         );
@@ -316,10 +305,11 @@ function renderMissionContent(mission, showApplyModal, setShowApplyModal, handle
                                 <div>
                                     <label className="text-sm text-zinc-400 mb-1 block">Proposed Timeline</label>
                                     <input
-                                        type="text"
+                                        type="number"
                                         value={applicationData.proposedTimeline}
                                         onChange={(e) => setApplicationData(prev => ({ ...prev, proposedTimeline: e.target.value }))}
-                                        placeholder="e.g., 2 weeks for MVP"
+                                        placeholder="e.g., 14"
+                                        min={1}
                                         className="w-full px-4 py-3 bg-black border border-white/10 rounded-lg text-sm"
                                     />
                                 </div>
