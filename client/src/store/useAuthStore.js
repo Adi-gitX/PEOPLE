@@ -136,17 +136,13 @@ export const useAuthStore = create(
             },
 
             refreshProfile: async () => {
-                try {
-                    const response = await api.get('/api/v1/users/me');
-                    const userData = response.data;
-                    set({
-                        profile: userData?.profile || null,
-                        role: userData?.user?.primaryRole || null,
-                    });
-                    return userData;
-                } catch (error) {
-                    throw error;
-                }
+                const response = await api.get('/api/v1/users/me');
+                const userData = response.data;
+                set({
+                    profile: userData?.profile || null,
+                    role: userData?.user?.primaryRole || null,
+                });
+                return userData;
             },
 
             getToken: async () => {
