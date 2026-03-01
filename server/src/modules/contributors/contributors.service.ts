@@ -4,6 +4,39 @@ import type { UpdateContributorProfile } from '../../schemas/index.js';
 
 const CONTRIBUTOR_PROFILES_COLLECTION = 'contributorProfiles';
 const SKILLS_COLLECTION = 'skills';
+const USERS_COLLECTION = 'users';
+const INDEX_FALLBACK_FETCH_LIMIT = 100;
+
+const stripUndefinedFields = <T extends Record<string, unknown>>(payload: T): Partial<T> => {
+    return Object.fromEntries(
+        Object.entries(payload).filter(([, value]) => value !== undefined)
+    ) as Partial<T>;
+};
+
+const normalizeOptionalText = (value: string | null | undefined): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const normalizeOptionalUrl = (value: string | null | undefined): string | null | undefined => {
+    if (value === null) return null;
+    if (typeof value !== 'string') return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+};
+
+const isFirestoreIndexError = (error: unknown): boolean => {
+    if (!(error instanceof Error)) return false;
+    const maybeCode = (error as { code?: number | string }).code;
+    const message = error.message.toLowerCase();
+    return (
+        maybeCode === 9 ||
+        maybeCode === 'failed-precondition' ||
+        message.includes('requires an index') ||
+        message.includes('failed precondition')
+    );
+};
 
 /**
  * Get contributor profile by user ID
@@ -21,21 +54,110 @@ export const getVerifiedContributors = async (
     limit: number = 20,
     lastDoc?: FirebaseFirestore.DocumentSnapshot
 ): Promise<{ contributors: ContributorProfile[]; lastDoc: FirebaseFirestore.DocumentSnapshot | null }> => {
-    let query = db
-        .collection(CONTRIBUTOR_PROFILES_COLLECTION)
-        .where('verificationStatus', '==', 'verified')
-        .orderBy('trustScore', 'desc')
-        .limit(limit);
+    try {
+        let query = db
+            .collection(CONTRIBUTOR_PROFILES_COLLECTION)
+            .where('verificationStatus', '==', 'verified')
+            .orderBy('trustScore', 'desc')
+            .limit(limit);
 
-    if (lastDoc) {
-        query = query.startAfter(lastDoc);
+        if (lastDoc) {
+            query = query.startAfter(lastDoc);
+        }
+
+        const snapshot = await query.get();
+        const contributors = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as ContributorProfile));
+        const newLastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
+
+        return { contributors, lastDoc: newLastDoc };
+    } catch (error) {
+        if (!isFirestoreIndexError(error)) {
+            throw error;
+        }
+
+        const fallbackLimit = Math.max(limit, INDEX_FALLBACK_FETCH_LIMIT);
+        const fallbackSnapshot = await db
+            .collection(CONTRIBUTOR_PROFILES_COLLECTION)
+            .where('verificationStatus', '==', 'verified')
+            .limit(fallbackLimit)
+            .get();
+
+        const sortedContributors = fallbackSnapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() } as ContributorProfile))
+            .sort((a, b) => (b.trustScore || 0) - (a.trustScore || 0))
+            .slice(0, limit);
+
+        return { contributors: sortedContributors, lastDoc: null };
+    }
+};
+
+export const getPublicContributors = async (
+    limit: number = 20
+): Promise<Array<{
+    id: string;
+    userId: string;
+    fullName: string;
+    avatarUrl?: string;
+    headline?: string;
+    bio?: string;
+    skills: ContributorSkill[];
+    trustScore: number;
+    matchPower: number;
+    yearsExperience: number;
+    isLookingForWork?: boolean;
+    verificationStatus?: ContributorProfile['verificationStatus'];
+    backgroundCheckStatus?: ContributorProfile['backgroundCheckStatus'];
+    totalMissionsCompleted?: number;
+    totalEarnings?: number;
+}>> => {
+    let contributors: ContributorProfile[];
+    try {
+        ({ contributors } = await getVerifiedContributors(limit));
+    } catch (error) {
+        if (!isFirestoreIndexError(error)) {
+            throw error;
+        }
+        return [];
     }
 
-    const snapshot = await query.get();
-    const contributors = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as ContributorProfile));
-    const newLastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
+    const userEntries = await Promise.all(
+        contributors.map(async (contributor) => {
+            const userId = contributor.userId || contributor.id || '';
+            const userDoc = await db.collection(USERS_COLLECTION).doc(userId).get();
 
-    return { contributors, lastDoc: newLastDoc };
+            return [
+                userId,
+                {
+                    fullName: userDoc.exists ? userDoc.data()?.fullName || 'Unknown' : 'Unknown',
+                    avatarUrl: userDoc.exists ? userDoc.data()?.avatarUrl : undefined,
+                },
+            ] as const;
+        })
+    );
+
+    const userMap = Object.fromEntries(userEntries);
+
+    return contributors.map((contributor) => {
+        const userId = contributor.userId || contributor.id || '';
+        const user = userMap[userId] || { fullName: 'Unknown' };
+        return {
+            id: contributor.id || userId,
+            userId,
+            fullName: user.fullName,
+            avatarUrl: user.avatarUrl,
+            headline: contributor.headline,
+            bio: contributor.bio,
+            skills: contributor.skills || [],
+            trustScore: contributor.trustScore || 0,
+            matchPower: contributor.matchPower || 0,
+            yearsExperience: contributor.yearsExperience || 0,
+            isLookingForWork: contributor.isLookingForWork,
+            verificationStatus: contributor.verificationStatus,
+            backgroundCheckStatus: contributor.backgroundCheckStatus,
+            totalMissionsCompleted: contributor.totalMissionsCompleted || 0,
+            totalEarnings: contributor.totalEarnings || 0,
+        };
+    });
 };
 
 /**
@@ -59,10 +181,48 @@ export const updateContributorProfile = async (
     userId: string,
     data: UpdateContributorProfile
 ): Promise<void> => {
-    await db.collection(CONTRIBUTOR_PROFILES_COLLECTION).doc(userId).update({
-        ...data,
-        updatedAt: new Date(),
+    const normalizedData = stripUndefinedFields({
+        headline: normalizeOptionalText(data.headline),
+        bio: normalizeOptionalText(data.bio),
+        githubUrl: normalizeOptionalUrl(data.githubUrl),
+        linkedinUrl: normalizeOptionalUrl(data.linkedinUrl),
+        portfolioUrl: normalizeOptionalUrl(data.portfolioUrl),
+        timezone: normalizeOptionalText(data.timezone),
+        availabilityHoursPerWeek: data.availabilityHoursPerWeek,
     });
+
+    const now = new Date();
+    const profileRef = db.collection(CONTRIBUTOR_PROFILES_COLLECTION).doc(userId);
+    const snapshot = await profileRef.get();
+
+    if (!snapshot.exists) {
+        const fallbackProfile: FirebaseFirestore.DocumentData = {
+            userId,
+            verificationStatus: 'pending',
+            isLookingForWork: false,
+            availabilityHoursPerWeek: 20,
+            yearsExperience: 0,
+            trustScore: 0,
+            matchPower: 0,
+            completionRate: 0,
+            totalMissionsCompleted: 0,
+            totalEarnings: 0,
+            shadowAssignments: 0,
+            skills: [],
+            backgroundCheckStatus: 'not_started',
+            ...normalizedData,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        await profileRef.set(fallbackProfile, { merge: true });
+        return;
+    }
+
+    await profileRef.set({
+        ...normalizedData,
+        updatedAt: now,
+    }, { merge: true });
 };
 
 /**
@@ -72,9 +232,36 @@ export const updateAvailability = async (
     userId: string,
     isLookingForWork: boolean
 ): Promise<void> => {
-    await db.collection(CONTRIBUTOR_PROFILES_COLLECTION).doc(userId).update({
+    const profileRef = db.collection(CONTRIBUTOR_PROFILES_COLLECTION).doc(userId);
+    const snapshot = await profileRef.get();
+    const now = new Date();
+
+    if (!snapshot.exists) {
+        const fallbackProfile: ContributorProfile = {
+            userId,
+            verificationStatus: 'pending',
+            isLookingForWork,
+            availabilityHoursPerWeek: 20,
+            yearsExperience: 0,
+            trustScore: 0,
+            matchPower: 0,
+            completionRate: 0,
+            totalMissionsCompleted: 0,
+            totalEarnings: 0,
+            shadowAssignments: 0,
+            skills: [],
+            backgroundCheckStatus: 'not_started',
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        await profileRef.set(fallbackProfile, { merge: true });
+        return;
+    }
+
+    await profileRef.update({
         isLookingForWork,
-        updatedAt: new Date(),
+        updatedAt: now,
     });
 };
 
