@@ -2,6 +2,18 @@ import { db } from '../../config/firebase.js';
 import type { Conversation, Message } from '../../types/firestore.js';
 
 const CONVERSATIONS_COLLECTION = 'conversations';
+const USERS_COLLECTION = 'users';
+
+interface ParticipantProfile {
+    fullName: string;
+    avatarUrl?: string;
+}
+
+export interface ConversationWithMeta extends Conversation {
+    lastMessage?: string;
+    unreadCount?: number;
+    participantProfiles?: Record<string, ParticipantProfile>;
+}
 
 export const createConversation = async (
     data: Omit<Conversation, 'id' | 'createdAt'>
@@ -42,7 +54,59 @@ export const getOrCreateDirectConversation = async (
     });
 };
 
-export const getUserConversations = async (userId: string): Promise<Conversation[]> => {
+const getParticipantProfiles = async (
+    participantIds: string[]
+): Promise<Record<string, ParticipantProfile>> => {
+    const uniqueParticipantIds = Array.from(new Set(participantIds));
+    const profileEntries = await Promise.all(
+        uniqueParticipantIds.map(async (id) => {
+            const userDoc = await db.collection(USERS_COLLECTION).doc(id).get();
+            if (!userDoc.exists) {
+                return [id, { fullName: 'Unknown' }] as const;
+            }
+
+            return [id, {
+                fullName: userDoc.data()?.fullName || 'Unknown',
+                avatarUrl: userDoc.data()?.avatarUrl,
+            }] as const;
+        })
+    );
+
+    return Object.fromEntries(profileEntries);
+};
+
+const getConversationPreview = async (
+    conversationId: string,
+    userId: string
+): Promise<{ lastMessage?: string; unreadCount: number }> => {
+    const messagesRef = db
+        .collection(CONVERSATIONS_COLLECTION)
+        .doc(conversationId)
+        .collection('messages');
+
+    const [latestMessageSnapshot, recentMessagesSnapshot] = await Promise.all([
+        messagesRef.orderBy('createdAt', 'desc').limit(1).get(),
+        messagesRef.orderBy('createdAt', 'desc').limit(100).get(),
+    ]);
+
+    const latestMessage = latestMessageSnapshot.empty
+        ? undefined
+        : (latestMessageSnapshot.docs[0].data() as Message).content;
+
+    const unreadCount = recentMessagesSnapshot.docs.reduce((count, doc) => {
+        const message = doc.data() as Message;
+        if (message.senderId === userId) return count;
+        if (message.isDeleted) return count;
+        return (message.readBy || []).includes(userId) ? count : count + 1;
+    }, 0);
+
+    return {
+        lastMessage: latestMessage,
+        unreadCount,
+    };
+};
+
+export const getUserConversations = async (userId: string): Promise<ConversationWithMeta[]> => {
     const snapshot = await db
         .collection(CONVERSATIONS_COLLECTION)
         .where('participants', 'array-contains', userId)
@@ -50,7 +114,27 @@ export const getUserConversations = async (userId: string): Promise<Conversation
         .limit(50)
         .get();
 
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+    const conversations = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Conversation)
+    );
+
+    const allParticipantIds = conversations.flatMap((conversation) => conversation.participants);
+    const participantProfiles = await getParticipantProfiles(allParticipantIds);
+
+    const conversationsWithMeta = await Promise.all(
+        conversations.map(async (conversation) => {
+            const preview = await getConversationPreview(conversation.id!, userId);
+
+            return {
+                ...conversation,
+                lastMessage: preview.lastMessage,
+                unreadCount: preview.unreadCount,
+                participantProfiles,
+            };
+        })
+    );
+
+    return conversationsWithMeta;
 };
 
 export const getConversationById = async (conversationId: string): Promise<Conversation | null> => {
@@ -92,6 +176,7 @@ export const sendMessage = async (
         senderName,
         content,
         messageType,
+        readBy: [senderId],
         isEdited: false,
         isDeleted: false,
         createdAt: new Date(),
@@ -107,9 +192,42 @@ export const sendMessage = async (
     // Update conversation's lastMessageAt
     await db.collection(CONVERSATIONS_COLLECTION).doc(conversationId).update({
         lastMessageAt: new Date(),
+        lastMessage: content.slice(0, 200),
     });
 
     return { id: docRef.id, ...message };
+};
+
+export const markConversationAsRead = async (
+    conversationId: string,
+    userId: string
+): Promise<number> => {
+    const messagesSnapshot = await db
+        .collection(CONVERSATIONS_COLLECTION)
+        .doc(conversationId)
+        .collection('messages')
+        .get();
+
+    const batch = db.batch();
+    let updatedCount = 0;
+
+    messagesSnapshot.docs.forEach((doc) => {
+        const message = doc.data() as Message;
+        const alreadyRead = (message.readBy || []).includes(userId);
+        const isOwnMessage = message.senderId === userId;
+
+        if (!isOwnMessage && !alreadyRead) {
+            const nextReadBy = Array.from(new Set([...(message.readBy || []), userId]));
+            batch.update(doc.ref, { readBy: nextReadBy });
+            updatedCount += 1;
+        }
+    });
+
+    if (updatedCount > 0) {
+        await batch.commit();
+    }
+
+    return updatedCount;
 };
 
 export const editMessage = async (
