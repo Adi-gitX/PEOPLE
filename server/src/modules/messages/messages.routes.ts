@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as messagesController from './messages.controller.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
+import { messagingLimiter } from '../../middleware/rateLimit.js';
 import { z } from 'zod';
 
 const router = Router();
@@ -22,8 +23,11 @@ router.get('/:id/messages', requireAuth, messagesController.getMessages);
 router.post(
     '/:id/messages',
     requireAuth,
+    messagingLimiter,
     validate(z.object({ content: z.string().min(1).max(5000) })),
     messagesController.sendMessage
 );
+
+router.post('/:id/read', requireAuth, messagingLimiter, messagesController.markConversationRead);
 
 export default router;
