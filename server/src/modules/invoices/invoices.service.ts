@@ -66,7 +66,7 @@ export const createInvoice = async (
     }
 
     const mission = missionDoc.data()!;
-    const PLATFORM_FEE_PERCENT = 10;
+    const PLATFORM_FEE_PERCENT = 0;
 
     // Get user details
     const contributorDoc = await db.collection('contributorProfiles').doc(contributorId).get();
