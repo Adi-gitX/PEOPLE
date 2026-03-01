@@ -128,6 +128,12 @@ router.patch(
     missionsController.updateApplicationStatus
 );
 
+router.patch(
+    '/:id/applications/:applicationId/withdraw',
+    requireAuth,
+    missionsController.withdrawApplication
+);
+
 // ─── Assignment & Completion ───
 
 router.post(
