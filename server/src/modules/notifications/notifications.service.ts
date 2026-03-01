@@ -67,8 +67,27 @@ export const getUnreadCount = async (userId: string): Promise<number> => {
     return snapshot.data().count;
 };
 
-export const markAsRead = async (notificationId: string): Promise<void> => {
-    await db.collection(NOTIFICATIONS_COLLECTION).doc(notificationId).update({
+const assertNotificationOwnership = async (
+    notificationId: string,
+    userId: string
+): Promise<FirebaseFirestore.DocumentReference> => {
+    const notificationRef = db.collection(NOTIFICATIONS_COLLECTION).doc(notificationId);
+    const notificationDoc = await notificationRef.get();
+
+    if (!notificationDoc.exists) {
+        throw new Error('Notification not found');
+    }
+
+    if (notificationDoc.data()?.userId !== userId) {
+        throw new Error('Forbidden');
+    }
+
+    return notificationRef;
+};
+
+export const markAsRead = async (notificationId: string, userId: string): Promise<void> => {
+    const notificationRef = await assertNotificationOwnership(notificationId, userId);
+    await notificationRef.update({
         isRead: true,
         readAt: new Date(),
     });
@@ -88,14 +107,16 @@ export const markAllAsRead = async (userId: string): Promise<void> => {
     await batch.commit();
 };
 
-export const archiveNotification = async (notificationId: string): Promise<void> => {
-    await db.collection(NOTIFICATIONS_COLLECTION).doc(notificationId).update({
+export const archiveNotification = async (notificationId: string, userId: string): Promise<void> => {
+    const notificationRef = await assertNotificationOwnership(notificationId, userId);
+    await notificationRef.update({
         isArchived: true,
     });
 };
 
-export const deleteNotification = async (notificationId: string): Promise<void> => {
-    await db.collection(NOTIFICATIONS_COLLECTION).doc(notificationId).delete();
+export const deleteNotification = async (notificationId: string, userId: string): Promise<void> => {
+    const notificationRef = await assertNotificationOwnership(notificationId, userId);
+    await notificationRef.delete();
 };
 
 // Notification factory functions for common events
