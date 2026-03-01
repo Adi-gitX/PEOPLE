@@ -16,14 +16,18 @@ export const requireAdmin = async (
             return;
         }
 
-        const userDoc = await db.collection(USERS_COLLECTION).doc(uid).get();
-        if (!userDoc.exists) {
-            sendError(res, 'User not found', 404);
-            return;
+        let role = req.userRole;
+        if (!role) {
+            const userDoc = await db.collection(USERS_COLLECTION).doc(uid).get();
+            if (!userDoc.exists) {
+                sendError(res, 'User not found', 404);
+                return;
+            }
+            role = userDoc.data()?.primaryRole;
+            req.userRole = role;
         }
 
-        const userData = userDoc.data();
-        if (userData?.primaryRole !== 'admin') {
+        if (role !== 'admin') {
             sendError(res, 'Admin access required', 403);
             return;
         }
