@@ -355,6 +355,38 @@ export const updateApplicationStatus = async (
         });
 };
 
+/**
+ * Withdraw application by contributor
+ */
+export const withdrawApplication = async (
+    missionId: string,
+    applicationId: string,
+    contributorId: string
+): Promise<void> => {
+    const application = await getApplicationById(missionId, applicationId);
+    if (!application) {
+        throw new Error('Application not found');
+    }
+
+    if (application.contributorId !== contributorId) {
+        throw new Error('Not authorized');
+    }
+
+    if (!['pending', 'shortlisted'].includes(application.status)) {
+        throw new Error('Application cannot be withdrawn in current status');
+    }
+
+    await db
+        .collection(MISSIONS_COLLECTION)
+        .doc(missionId)
+        .collection('applications')
+        .doc(applicationId)
+        .update({
+            status: 'withdrawn',
+            reviewedAt: new Date(),
+        });
+};
+
 // ─── Assignments ───
 
 /**
