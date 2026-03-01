@@ -92,9 +92,36 @@ export const startConversation = async (req: Request, res: Response): Promise<vo
             sendError(res, 'Cannot start conversation with yourself', 400);
             return;
         }
+        const recipientDoc = await db.collection(USERS_COLLECTION).doc(recipientId).get();
+        if (!recipientDoc.exists) {
+            sendError(res, 'Recipient not found', 404);
+            return;
+        }
         const conversation = await messagesService.getOrCreateDirectConversation(uid, recipientId);
         sendSuccess(res, { conversation });
     } catch {
         sendError(res, 'Failed to start conversation', 500);
+    }
+};
+
+export const markConversationRead = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const uid = req.user?.uid;
+        const { id } = req.params;
+        if (!uid) {
+            sendError(res, 'User ID not found', 401);
+            return;
+        }
+
+        const conversation = await messagesService.getConversationById(id);
+        if (!conversation || !conversation.participants.includes(uid)) {
+            sendError(res, 'Not authorized', 403);
+            return;
+        }
+
+        const updatedCount = await messagesService.markConversationAsRead(id, uid);
+        sendSuccess(res, { updatedCount });
+    } catch {
+        sendError(res, 'Failed to mark conversation as read', 500);
     }
 };
