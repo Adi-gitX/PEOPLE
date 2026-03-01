@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as contributorsController from './contributors.controller.js';
-import { requireAuth } from '../../middleware/auth.js';
+import { requireAuth, requireRole } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import {
     updateContributorProfileSchema,
@@ -9,6 +9,13 @@ import {
 } from '../../schemas/index.js';
 
 const router = Router();
+
+/**
+ * @route   GET /api/v1/contributors/public
+ * @desc    Get list of verified contributors (public-safe)
+ * @access  Public
+ */
+router.get('/public', contributorsController.getPublicContributors);
 
 /**
  * @route   GET /api/v1/contributors
@@ -27,7 +34,7 @@ router.get('/me', requireAuth, async (req, res) => {
     return contributorsController.getContributorById(req, res);
 });
 
-router.get('/me/applications', requireAuth, contributorsController.getMyApplications);
+router.get('/me/applications', requireAuth, requireRole(['contributor', 'admin']), contributorsController.getMyApplications);
 
 /**
  * @route   PATCH /api/v1/contributors/me
@@ -37,6 +44,7 @@ router.get('/me/applications', requireAuth, contributorsController.getMyApplicat
 router.patch(
     '/me',
     requireAuth,
+    requireRole(['contributor', 'admin']),
     validate(updateContributorProfileSchema),
     contributorsController.updateMyProfile
 );
@@ -49,6 +57,7 @@ router.patch(
 router.patch(
     '/me/availability',
     requireAuth,
+    requireRole(['contributor', 'admin']),
     validate(updateAvailabilitySchema),
     contributorsController.updateAvailability
 );
@@ -61,6 +70,7 @@ router.patch(
 router.post(
     '/me/skills',
     requireAuth,
+    requireRole(['contributor', 'admin']),
     validate(addSkillSchema),
     contributorsController.addSkill
 );
@@ -73,6 +83,7 @@ router.post(
 router.post(
     '/me/verification',
     requireAuth,
+    requireRole(['contributor', 'admin']),
     contributorsController.submitVerification
 );
 
@@ -84,6 +95,7 @@ router.post(
 router.delete(
     '/me/skills/:skillId',
     requireAuth,
+    requireRole(['contributor', 'admin']),
     contributorsController.removeSkill
 );
 
