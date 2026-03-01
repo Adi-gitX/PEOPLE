@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { env } from '../../config/index.js';
 import * as initiatorsService from './initiators.service.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 
@@ -34,7 +35,10 @@ export const updateMyProfile = async (req: Request, res: Response): Promise<void
         await initiatorsService.updateInitiatorProfile(uid, req.body);
         const { user, profile } = await initiatorsService.getInitiatorById(uid);
         sendSuccess(res, { message: 'Profile updated successfully', user, profile });
-    } catch {
+    } catch (error) {
+        if (env.NODE_ENV === 'development') {
+            console.error('[initiators:updateMyProfile] failed', error);
+        }
         sendError(res, 'Failed to update profile', 500);
     }
 };
