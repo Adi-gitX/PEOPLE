@@ -36,10 +36,23 @@ export const getUnreadCount = async (req: Request, res: Response): Promise<void>
 
 export const markAsRead = async (req: Request, res: Response): Promise<void> => {
     try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            sendError(res, 'User ID not found', 401);
+            return;
+        }
         const { id } = req.params;
-        await notificationsService.markAsRead(id);
+        await notificationsService.markAsRead(id, uid);
         sendSuccess(res, { message: 'Notification marked as read' });
-    } catch {
+    } catch (error) {
+        if (error instanceof Error && error.message === 'Notification not found') {
+            sendError(res, 'Notification not found', 404);
+            return;
+        }
+        if (error instanceof Error && error.message === 'Forbidden') {
+            sendError(res, 'Not authorized', 403);
+            return;
+        }
         sendError(res, 'Failed to mark notification as read', 500);
     }
 };
@@ -60,20 +73,46 @@ export const markAllAsRead = async (req: Request, res: Response): Promise<void> 
 
 export const archiveNotification = async (req: Request, res: Response): Promise<void> => {
     try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            sendError(res, 'User ID not found', 401);
+            return;
+        }
         const { id } = req.params;
-        await notificationsService.archiveNotification(id);
+        await notificationsService.archiveNotification(id, uid);
         sendNoContent(res);
-    } catch {
+    } catch (error) {
+        if (error instanceof Error && error.message === 'Notification not found') {
+            sendError(res, 'Notification not found', 404);
+            return;
+        }
+        if (error instanceof Error && error.message === 'Forbidden') {
+            sendError(res, 'Not authorized', 403);
+            return;
+        }
         sendError(res, 'Failed to archive notification', 500);
     }
 };
 
 export const deleteNotification = async (req: Request, res: Response): Promise<void> => {
     try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            sendError(res, 'User ID not found', 401);
+            return;
+        }
         const { id } = req.params;
-        await notificationsService.deleteNotification(id);
+        await notificationsService.deleteNotification(id, uid);
         sendNoContent(res);
-    } catch {
+    } catch (error) {
+        if (error instanceof Error && error.message === 'Notification not found') {
+            sendError(res, 'Notification not found', 404);
+            return;
+        }
+        if (error instanceof Error && error.message === 'Forbidden') {
+            sendError(res, 'Not authorized', 403);
+            return;
+        }
         sendError(res, 'Failed to delete notification', 500);
     }
 };
