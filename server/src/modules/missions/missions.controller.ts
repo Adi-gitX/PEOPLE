@@ -233,6 +233,37 @@ export const updateApplicationStatus = async (req: Request, res: Response): Prom
     }
 };
 
+export const withdrawApplication = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            sendError(res, 'User ID not found in token', 401);
+            return;
+        }
+
+        const { id, applicationId } = req.params;
+        await missionsService.withdrawApplication(id, applicationId, uid);
+        sendSuccess(res, { message: 'Application withdrawn' });
+    } catch (error) {
+        if (error instanceof Error && error.message === 'Application not found') {
+            sendError(res, 'Application not found', 404);
+            return;
+        }
+        if (error instanceof Error && error.message === 'Not authorized') {
+            sendError(res, 'Not authorized', 403);
+            return;
+        }
+        if (
+            error instanceof Error &&
+            error.message === 'Application cannot be withdrawn in current status'
+        ) {
+            sendError(res, error.message, 400);
+            return;
+        }
+        sendError(res, 'Failed to withdraw application', 500);
+    }
+};
+
 export const assignContributor = async (req: Request, res: Response): Promise<void> => {
     try {
         const uid = req.user?.uid;
