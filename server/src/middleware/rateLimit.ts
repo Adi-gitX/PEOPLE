@@ -136,6 +136,13 @@ export const paymentLimiter = createRateLimiter('payment', {
     message: 'Too many payment requests, please try again later',
 });
 
+// Limiter for chat messaging operations
+export const messagingLimiter = createRateLimiter('messaging', {
+    windowMs: 5 * 60 * 1000,  // 5 minutes
+    max: 180,                  // 180 message operations per 5 minutes
+    message: 'Too many message actions, please slow down',
+});
+
 // Get rate limit stats (for admin/monitoring)
 export const getRateLimitStats = () => {
     const stats: Record<string, { activeKeys: number; totalRequests: number }> = {};
