@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { env } from '../../config/index.js';
 import * as contributorsService from './contributors.service.js';
 import { sendSuccess, sendError, sendCreated, sendNoContent } from '../../utils/response.js';
 
@@ -8,6 +9,19 @@ export const getContributors = async (req: Request, res: Response): Promise<void
         const { contributors } = await contributorsService.getVerifiedContributors(limit);
         sendSuccess(res, contributors);
     } catch {
+        sendError(res, 'Failed to get contributors', 500);
+    }
+};
+
+export const getPublicContributors = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const limit = parseInt(req.query.limit as string, 10) || 20;
+        const contributors = await contributorsService.getPublicContributors(limit);
+        sendSuccess(res, contributors);
+    } catch (error) {
+        if (env.NODE_ENV === 'development') {
+            console.error('[contributors:getPublicContributors] failed', error);
+        }
         sendError(res, 'Failed to get contributors', 500);
     }
 };
@@ -36,7 +50,10 @@ export const updateMyProfile = async (req: Request, res: Response): Promise<void
         await contributorsService.updateContributorProfile(uid, req.body);
         const profile = await contributorsService.getContributorProfile(uid);
         sendSuccess(res, { message: 'Profile updated successfully', profile });
-    } catch {
+    } catch (error) {
+        if (env.NODE_ENV === 'development') {
+            console.error('[contributors:updateMyProfile] failed', error);
+        }
         sendError(res, 'Failed to update profile', 500);
     }
 };
