@@ -85,9 +85,9 @@ export default function WalletPage() {
 
         setWithdrawing(true);
         try {
-            await api.post('/api/v1/wallet/withdraw', {
+            await api.post('/api/v1/wallet/withdrawals', {
                 amount,
-                payoutMethod: withdrawForm.payoutMethod,
+                payoutMethod: 'bank_transfer',
                 payoutDetails: {
                     account: withdrawForm.payoutDetails.trim(),
                 },
@@ -257,11 +257,9 @@ export default function WalletPage() {
                                     value={withdrawForm.payoutMethod}
                                     onChange={(e) => setWithdrawForm((prev) => ({ ...prev, payoutMethod: e.target.value }))}
                                     className="w-full h-11 px-3 bg-black border border-white/10 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                                    disabled
                                 >
                                     <option value="bank_transfer">Bank Transfer</option>
-                                    <option value="paypal">PayPal</option>
-                                    <option value="stripe">Stripe</option>
-                                    <option value="payoneer">Payoneer</option>
                                 </select>
                             </div>
 
