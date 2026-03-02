@@ -1,10 +1,10 @@
 import { db } from '../../config/firebase.js';
 import type { ContributorProfile, ContributorSkill, Skill } from '../../types/firestore.js';
 import type { UpdateContributorProfile } from '../../schemas/index.js';
+import { searchUsers } from '../search/search.service.js';
 
 const CONTRIBUTOR_PROFILES_COLLECTION = 'contributorProfiles';
 const SKILLS_COLLECTION = 'skills';
-const USERS_COLLECTION = 'users';
 const INDEX_FALLBACK_FETCH_LIMIT = 100;
 
 const stripUndefinedFields = <T extends Record<string, unknown>>(payload: T): Partial<T> => {
@@ -110,58 +110,36 @@ export const getPublicContributors = async (
     totalMissionsCompleted?: number;
     totalEarnings?: number;
 }>> => {
-    let contributors: ContributorProfile[];
-    try {
-        ({ contributors } = await getVerifiedContributors(limit));
-    } catch (error) {
-        if (!isFirestoreIndexError(error)) {
-            throw error;
-        }
-        return [];
-    }
-
-    const userEntries = await Promise.all(
-        contributors.map(async (contributor) => {
-            const userId = contributor.userId || contributor.id || '';
-            if (!userId) {
-                return [userId, { fullName: 'Unknown' }] as const;
-            }
-
-            const userDoc = await db.collection(USERS_COLLECTION).doc(userId).get();
-
-            return [
-                userId,
-                {
-                    fullName: userDoc.exists ? userDoc.data()?.fullName || 'Unknown' : 'Unknown',
-                    avatarUrl: userDoc.exists ? userDoc.data()?.avatarUrl : undefined,
-                },
-            ] as const;
-        })
-    );
-
-    const userMap = Object.fromEntries(userEntries);
-
-    return contributors.map((contributor) => {
-        const userId = contributor.userId || contributor.id || 'unknown-contributor';
-        const user = userMap[userId] || { fullName: 'Unknown' };
-        return {
-            id: contributor.id || userId,
-            userId,
-            fullName: user.fullName,
-            avatarUrl: user.avatarUrl,
-            headline: contributor.headline,
-            bio: contributor.bio,
-            skills: contributor.skills || [],
-            trustScore: contributor.trustScore || 0,
-            matchPower: contributor.matchPower || 0,
-            yearsExperience: contributor.yearsExperience || 0,
-            isLookingForWork: contributor.isLookingForWork,
-            verificationStatus: contributor.verificationStatus,
-            backgroundCheckStatus: contributor.backgroundCheckStatus,
-            totalMissionsCompleted: contributor.totalMissionsCompleted || 0,
-            totalEarnings: contributor.totalEarnings || 0,
-        };
+    const result = await searchUsers({
+        role: 'contributor',
+        verified: true,
+        sort: 'trust',
+        limit,
     });
+
+    return result.users.map((contributor) => ({
+        id: contributor.id,
+        userId: contributor.userId,
+        fullName: contributor.fullName,
+        avatarUrl: contributor.avatarUrl,
+        headline: contributor.headline,
+        bio: contributor.bio,
+        skills: (contributor.skills || []).map((skillName) => ({
+            skillId: skillName.toLowerCase().replace(/\s+/g, '-'),
+            skillName,
+            proficiencyLevel: 'intermediate',
+            yearsExperience: 0,
+            verified: true,
+        })),
+        trustScore: contributor.trustScore || 0,
+        matchPower: contributor.matchPower || 0,
+        yearsExperience: 0,
+        isLookingForWork: contributor.availability ?? true,
+        verificationStatus: contributor.verified ? 'verified' : 'pending',
+        backgroundCheckStatus: 'not_started',
+        totalMissionsCompleted: 0,
+        totalEarnings: 0,
+    }));
 };
 
 /**
