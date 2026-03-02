@@ -50,6 +50,7 @@ export const getMessages = async (req: Request, res: Response): Promise<void> =>
         }
         const messages = await messagesService.getMessages(id, {
             limit: limit ? parseInt(limit as string, 10) : 50,
+            viewerRole: req.userRole,
         });
         sendSuccess(res, { messages });
     } catch {
@@ -75,7 +76,11 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
         const senderName = userDoc.exists ? userDoc.data()?.fullName || 'Unknown' : 'Unknown';
         const message = await messagesService.sendMessage(id, uid, senderName, content);
         sendCreated(res, { message });
-    } catch {
+    } catch (error: unknown) {
+        if (error instanceof Error && error.message === 'Conversation is locked by admin moderation') {
+            sendError(res, error.message, 423);
+            return;
+        }
         sendError(res, 'Failed to send message', 500);
     }
 };
