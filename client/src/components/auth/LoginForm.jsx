@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
-import { signIn, signInWithGoogle, resetPassword } from '../../lib/auth';
+import { signIn, signInWithGoogle, resetPassword, completeTotpSignIn } from '../../lib/auth';
 import { Mail, Lock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '../../store/useAuthStore';
+import { getDefaultPathForRole } from '../../lib/roleRouting';
 
 export function LoginForm() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [mfaResolver, setMfaResolver] = useState(null);
+    const [mfaCode, setMfaCode] = useState('');
     const navigate = useNavigate();
     const { refreshProfile } = useAuthStore();
 
@@ -28,9 +31,22 @@ export function LoginForm() {
                 return 'Too many failed attempts. Please try again later or reset your password.';
             case 'auth/network-request-failed':
                 return 'Network error. Please check your connection.';
+            case 'auth/multi-factor-auth-required':
+                return 'Authenticator app verification is required for this account.';
+            case 'auth/invalid-verification-code':
+                return 'Invalid authenticator code. Please try again.';
             default:
                 return 'Login failed. Please try again.';
         }
+    };
+
+    const finalizeLogin = async () => {
+        await new Promise(r => setTimeout(r, 300));
+        const userData = await refreshProfile();
+        const role = userData?.activeRole || userData?.user?.primaryRole;
+        const dashboardPath = getDefaultPathForRole(role);
+        toast.success('Welcome back!');
+        navigate(dashboardPath, { replace: true });
     };
 
     const handleSubmit = async (e) => {
@@ -38,20 +54,22 @@ export function LoginForm() {
         setIsLoading(true);
 
         try {
+            if (mfaResolver) {
+                await completeTotpSignIn(mfaResolver, mfaCode);
+                setMfaResolver(null);
+                setMfaCode('');
+                await finalizeLogin();
+                return;
+            }
+
             await signIn(email, password);
-            await new Promise(r => setTimeout(r, 300));
-
-            const userData = await refreshProfile();
-            const role = userData?.user?.primaryRole;
-
-            toast.success('Welcome back!');
-
-            const dashboardPath = role === 'initiator'
-                ? '/dashboard/initiator'
-                : '/dashboard/contributor';
-
-            navigate(dashboardPath, { replace: true });
+            await finalizeLogin();
         } catch (error) {
+            if (error.code === 'auth/multi-factor-auth-required' && error.resolver) {
+                setMfaResolver(error.resolver);
+                toast.info('Enter the 6-digit code from your authenticator app to continue.');
+                return;
+            }
             const message = getErrorMessage(error.code);
             toast.error(message);
 
@@ -91,13 +109,11 @@ export function LoginForm() {
             await new Promise(r => setTimeout(r, 500));
 
             const userData = await refreshProfile();
-            const role = userData?.user?.primaryRole;
+            const role = userData?.activeRole || userData?.user?.primaryRole;
 
             toast.success('Welcome!');
 
-            const dashboardPath = role === 'initiator'
-                ? '/dashboard/initiator'
-                : '/dashboard/contributor';
+            const dashboardPath = getDefaultPathForRole(role);
 
             navigate(dashboardPath, { replace: true });
         } catch (error) {
@@ -118,7 +134,7 @@ export function LoginForm() {
                 <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <input
-                        required
+                        required={!mfaResolver}
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -142,7 +158,7 @@ export function LoginForm() {
                 <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <input
-                        required
+                        required={!mfaResolver}
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -158,12 +174,39 @@ export function LoginForm() {
                 </div>
             )}
 
+            {mfaResolver && (
+                <div className="space-y-2 bg-zinc-900 border border-white/10 rounded-lg p-3">
+                    <label className="text-sm text-zinc-300 block">Authenticator Code</label>
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value)}
+                        placeholder="123456"
+                        className="w-full h-10 px-3 rounded-md border border-white/10 bg-black text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    />
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs text-zinc-500">Enter the latest code from your authenticator app.</p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setMfaResolver(null);
+                                setMfaCode('');
+                            }}
+                            className="text-xs text-zinc-400 hover:text-white"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <Button
                 type="submit"
                 className="w-full bg-white text-black hover:bg-white/90 font-semibold h-10 mt-2"
                 disabled={isLoading}
             >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Log In'}
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (mfaResolver ? 'Verify & Continue' : 'Log In')}
             </Button>
 
             <div className="relative my-4">
