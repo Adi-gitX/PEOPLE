@@ -8,6 +8,7 @@ export const useAuthStore = create(
         (set, get) => ({
             user: null,
             profile: null,
+            adminAccess: null,
             isAuthenticated: false,
             isLoading: true,
             role: null,
@@ -22,15 +23,25 @@ export const useAuthStore = create(
                             await firebaseUser.getIdToken(true);
                             const response = await api.get('/api/v1/users/me');
                             const userData = response.data;
+                            let adminAccess = null;
+                            if (userData?.user?.primaryRole === 'admin') {
+                                try {
+                                    const adminResponse = await api.get('/api/v1/admin/me/scopes');
+                                    adminAccess = adminResponse.data || null;
+                                } catch {
+                                    adminAccess = null;
+                                }
+                            }
 
                             set({
                                 user: {
                                     uid: firebaseUser.uid,
                                     email: firebaseUser.email,
-                                    displayName: firebaseUser.displayName,
-                                    photoURL: firebaseUser.photoURL,
+                                    displayName: userData?.user?.fullName || firebaseUser.displayName,
+                                    photoURL: userData?.user?.avatarUrl || firebaseUser.photoURL,
                                 },
                                 profile: userData?.profile || null,
+                                adminAccess,
                                 isAuthenticated: true,
                                 isLoading: false,
                                 role: userData?.user?.primaryRole || null,
@@ -54,10 +65,11 @@ export const useAuthStore = create(
                                     user: {
                                         uid: firebaseUser.uid,
                                         email: firebaseUser.email,
-                                        displayName: firebaseUser.displayName,
-                                        photoURL: firebaseUser.photoURL,
+                                        displayName: registerResponse.data?.user?.fullName || firebaseUser.displayName,
+                                        photoURL: registerResponse.data?.user?.avatarUrl || firebaseUser.photoURL,
                                     },
                                     profile: registerResponse.data?.profile || null,
+                                    adminAccess: null,
                                     isAuthenticated: true,
                                     isLoading: false,
                                     role: registerResponse.data?.user?.primaryRole || storedRole,
@@ -72,6 +84,7 @@ export const useAuthStore = create(
                                         photoURL: firebaseUser.photoURL,
                                     },
                                     profile: null,
+                                    adminAccess: null,
                                     isAuthenticated: true,
                                     isLoading: false,
                                     role: null,
@@ -83,6 +96,7 @@ export const useAuthStore = create(
                         set({
                             user: null,
                             profile: null,
+                            adminAccess: null,
                             isAuthenticated: false,
                             isLoading: false,
                             role: null,
@@ -96,6 +110,7 @@ export const useAuthStore = create(
                 set({
                     user: userData,
                     profile: profileData,
+                    adminAccess: null,
                     isAuthenticated: true,
                     isLoading: false,
                     role: userRole,
@@ -106,6 +121,7 @@ export const useAuthStore = create(
                 set({
                     user: userData,
                     profile: profileData,
+                    adminAccess: null,
                     isAuthenticated: true,
                     isLoading: false,
                     role: profileData?.userId ? (get().role) : null,
@@ -118,6 +134,7 @@ export const useAuthStore = create(
                     set({
                         user: null,
                         profile: null,
+                        adminAccess: null,
                         isAuthenticated: false,
                         isLoading: false,
                         role: null,
@@ -135,14 +152,43 @@ export const useAuthStore = create(
                 set({ profile });
             },
 
+            setAdminAccess: (adminAccess) => {
+                set({ adminAccess });
+            },
+
             refreshProfile: async () => {
                 const response = await api.get('/api/v1/users/me');
                 const userData = response.data;
+                const currentUser = get().user;
+                let adminAccess = get().adminAccess;
+                if (userData?.user?.primaryRole === 'admin') {
+                    try {
+                        const adminResponse = await api.get('/api/v1/admin/me/scopes');
+                        adminAccess = adminResponse.data || null;
+                    } catch {
+                        adminAccess = null;
+                    }
+                } else {
+                    adminAccess = null;
+                }
                 set({
+                    user: currentUser ? {
+                        ...currentUser,
+                        displayName: userData?.user?.fullName || currentUser.displayName,
+                        photoURL: userData?.user?.avatarUrl || currentUser.photoURL,
+                    } : currentUser,
                     profile: userData?.profile || null,
+                    adminAccess,
                     role: userData?.user?.primaryRole || null,
                 });
                 return userData;
+            },
+
+            refreshAdminAccess: async () => {
+                const response = await api.get('/api/v1/admin/me/scopes');
+                const adminAccess = response.data || null;
+                set({ adminAccess });
+                return adminAccess;
             },
 
             getToken: async () => {
