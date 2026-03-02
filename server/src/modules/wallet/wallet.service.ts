@@ -9,6 +9,7 @@ import type { UserWallet, WalletTransaction, WithdrawalRequest } from '../../typ
 const WALLETS_COLLECTION = 'wallets';
 const TRANSACTIONS_COLLECTION = 'walletTransactions';
 const WITHDRAWALS_COLLECTION = 'withdrawalRequests';
+const CONTRIBUTOR_PROFILES_COLLECTION = 'contributorProfiles';
 
 // ═══════════════════════════════════════════════════════════════════
 // WALLET MANAGEMENT
@@ -301,6 +302,18 @@ export const processRefund = async (
 const PLATFORM_WITHDRAWAL_FEE_PERCENT = 0; // True zero platform markup
 const PROCESSING_FEE_FLAT = Number(process.env.WITHDRAWAL_PROCESSING_FEE || 0); // Optional pass-through processor fee
 
+const assertContributorKycEligible = async (userId: string): Promise<void> => {
+    const profileDoc = await db.collection(CONTRIBUTOR_PROFILES_COLLECTION).doc(userId).get();
+    if (!profileDoc.exists) {
+        throw new Error('Contributor profile not found');
+    }
+
+    const verificationStatus = profileDoc.data()?.verificationStatus;
+    if (verificationStatus !== 'verified') {
+        throw new Error('KYC verification required before withdrawal');
+    }
+};
+
 /**
  * Request withdrawal
  */
@@ -310,6 +323,12 @@ export const requestWithdrawal = async (
     payoutMethod: WithdrawalRequest['payoutMethod'],
     payoutDetails: Record<string, string>
 ): Promise<WithdrawalRequest> => {
+    if (payoutMethod !== 'bank_transfer') {
+        throw new Error('Only bank transfer payouts are supported at this time');
+    }
+
+    await assertContributorKycEligible(userId);
+
     const wallet = await getOrCreateWallet(userId);
 
     if (wallet.availableBalance < amount) {
@@ -382,6 +401,30 @@ export const getUserWithdrawals = async (userId: string): Promise<WithdrawalRequ
     const withdrawals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WithdrawalRequest));
 
     // Sort by createdAt descending
+    return withdrawals.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt as any).getTime();
+        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt as any).getTime();
+        return dateB - dateA;
+    });
+};
+
+export const getAllWithdrawals = async (options: {
+    status?: WithdrawalRequest['status'];
+    limit?: number;
+} = {}): Promise<WithdrawalRequest[]> => {
+    let query: FirebaseFirestore.Query = db.collection(WITHDRAWALS_COLLECTION);
+
+    if (options.status) {
+        query = query.where('status', '==', options.status);
+    }
+
+    if (options.limit) {
+        query = query.limit(options.limit);
+    }
+
+    const snapshot = await query.get();
+    const withdrawals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WithdrawalRequest));
+
     return withdrawals.sort((a, b) => {
         const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt as any).getTime();
         const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt as any).getTime();
@@ -492,6 +535,54 @@ export const cancelWithdrawal = async (
     }
 
     return { ...withdrawal, status: 'cancelled', failureReason: reason };
+};
+
+export const updateWithdrawalStatus = async (
+    withdrawalId: string,
+    action: 'approve' | 'reject' | 'mark_paid',
+    adminId: string,
+    notes?: string,
+    transactionReference?: string
+): Promise<WithdrawalRequest> => {
+    const doc = await db.collection(WITHDRAWALS_COLLECTION).doc(withdrawalId).get();
+    if (!doc.exists) {
+        throw new Error('Withdrawal request not found');
+    }
+
+    const withdrawal = { id: doc.id, ...doc.data() } as WithdrawalRequest;
+    const now = new Date();
+
+    if (action === 'approve') {
+        if (withdrawal.status !== 'pending') {
+            throw new Error('Only pending withdrawals can be approved');
+        }
+        await doc.ref.update({
+            status: 'processing',
+            approvedBy: adminId,
+            approvalNotes: notes || null,
+            updatedAt: now,
+        });
+        return { ...withdrawal, status: 'processing', updatedAt: now } as WithdrawalRequest;
+    }
+
+    if (action === 'reject') {
+        if (withdrawal.status !== 'pending' && withdrawal.status !== 'processing') {
+            throw new Error('Withdrawal cannot be rejected in current status');
+        }
+        return cancelWithdrawal(withdrawalId, notes || 'Rejected by admin');
+    }
+
+    if (withdrawal.status !== 'processing') {
+        throw new Error('Only processing withdrawals can be marked as paid');
+    }
+
+    const completed = await processWithdrawal(withdrawalId, transactionReference);
+    await db.collection(WITHDRAWALS_COLLECTION).doc(withdrawalId).update({
+        paidBy: adminId,
+        paymentNotes: notes || null,
+        updatedAt: now,
+    });
+    return completed;
 };
 
 // ═══════════════════════════════════════════════════════════════════
