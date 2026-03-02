@@ -2,16 +2,29 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { api } from '../../lib/api';
-import { Users, Briefcase, DollarSign, AlertTriangle, ArrowUpRight, TrendingUp, Activity } from 'lucide-react';
-import { Skeleton } from '../../components/ui/Skeleton';
+import { Users, Briefcase, DollarSign, AlertTriangle, ArrowUpRight, TrendingUp, Activity, LifeBuoy, MessageSquare, Wallet, FileClock } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const adminAccess = useAuthStore((state) => state.adminAccess);
+
+    const hasScope = (scopes = []) => {
+        if (!adminAccess || adminAccess.adminType === 'super_admin') return true;
+        const scopeSet = new Set(adminAccess.scopes || []);
+        return scopes.every((scope) => scopeSet.has(scope));
+    };
+
+    const canReadStats = hasScope(['users.read']);
 
     useEffect(() => {
+        if (!canReadStats) {
+            setLoading(false);
+            return;
+        }
         fetchStats();
-    }, []);
+    }, [canReadStats]);
 
     const fetchStats = async () => {
         try {
@@ -110,6 +123,84 @@ export default function AdminDashboard() {
                         <h3 className="text-lg font-bold text-white mb-1 tracking-tight">Disputes</h3>
                         <p className="text-sm text-neutral-500">Review and resolve payment disputes</p>
                     </Link>
+
+                    <Link
+                        to="/admin/support"
+                        className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 hover:border-white/[0.15] transition-all group"
+                    >
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="p-3 bg-cyan-500/10 rounded-xl border border-cyan-500/20">
+                                <LifeBuoy className="w-6 h-6 text-cyan-400" />
+                            </div>
+                            <ArrowUpRight className="w-5 h-5 text-neutral-600 group-hover:text-white transition-colors" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-1 tracking-tight">Support Queue</h3>
+                        <p className="text-sm text-neutral-500">Manage support tickets and email replies</p>
+                    </Link>
+
+                    {hasScope(['messages.read']) && (
+                        <Link
+                            to="/admin/messages"
+                            className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 hover:border-white/[0.15] transition-all group"
+                        >
+                            <div className="flex items-center justify-between mb-5">
+                                <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                                    <MessageSquare className="w-6 h-6 text-amber-300" />
+                                </div>
+                                <ArrowUpRight className="w-5 h-5 text-neutral-600 group-hover:text-white transition-colors" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-1 tracking-tight">Message Oversight</h3>
+                            <p className="text-sm text-neutral-500">Review and moderate platform conversations</p>
+                        </Link>
+                    )}
+
+                    {hasScope(['withdrawals.read']) && (
+                        <Link
+                            to="/admin/withdrawals"
+                            className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 hover:border-white/[0.15] transition-all group"
+                        >
+                            <div className="flex items-center justify-between mb-5">
+                                <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                                    <Wallet className="w-6 h-6 text-emerald-300" />
+                                </div>
+                                <ArrowUpRight className="w-5 h-5 text-neutral-600 group-hover:text-white transition-colors" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-1 tracking-tight">Withdrawals</h3>
+                            <p className="text-sm text-neutral-500">Approve and process payout requests</p>
+                        </Link>
+                    )}
+
+                    {hasScope(['payments.read', 'escrow.read']) && (
+                        <Link
+                            to="/admin/payments"
+                            className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 hover:border-white/[0.15] transition-all group"
+                        >
+                            <div className="flex items-center justify-between mb-5">
+                                <div className="p-3 bg-sky-500/10 rounded-xl border border-sky-500/20">
+                                    <DollarSign className="w-6 h-6 text-sky-300" />
+                                </div>
+                                <ArrowUpRight className="w-5 h-5 text-neutral-600 group-hover:text-white transition-colors" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-1 tracking-tight">Payments and Escrow</h3>
+                            <p className="text-sm text-neutral-500">Track intents and escrow states</p>
+                        </Link>
+                    )}
+
+                    {hasScope(['audit.read']) && (
+                        <Link
+                            to="/admin/audit"
+                            className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 hover:border-white/[0.15] transition-all group"
+                        >
+                            <div className="flex items-center justify-between mb-5">
+                                <div className="p-3 bg-zinc-500/10 rounded-xl border border-zinc-500/20">
+                                    <FileClock className="w-6 h-6 text-zinc-300" />
+                                </div>
+                                <ArrowUpRight className="w-5 h-5 text-neutral-600 group-hover:text-white transition-colors" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-1 tracking-tight">Audit Log</h3>
+                            <p className="text-sm text-neutral-500">Review all sensitive admin actions</p>
+                        </Link>
+                    )}
                 </div>
 
                 {stats?.totalEarnings > 0 && (
