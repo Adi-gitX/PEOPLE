@@ -12,7 +12,9 @@
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check:system": "tsx src/startup/preflight.ts"
+    "check:system": "tsx src/startup/preflight.ts",
+    "smoke:postdeploy": "bash ../scripts/post-deploy-smoke.sh",
+    "admin:bootstrap-profiles": "tsx src/scripts/backfillAdminProfiles.ts"
   },
   "keywords": [
     "people",
