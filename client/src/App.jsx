@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthGuard, GuestGuard } from './components/auth/AuthGuard';
+import { useAuthStore } from './store/useAuthStore';
+import { getDefaultPathForRole } from './lib/roleRouting';
 
 
 import LandingPage from './pages/LandingPage';
@@ -27,6 +29,8 @@ import AdminMessagesPage from './pages/admin/AdminMessagesPage';
 import AdminWithdrawalsPage from './pages/admin/AdminWithdrawalsPage';
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
 import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
+import AdminAdminsPage from './pages/admin/AdminAdminsPage';
+import AdminSecurityPage from './pages/admin/AdminSecurityPage';
 import WalletPage from './pages/WalletPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -42,6 +46,11 @@ import BlogPage from './pages/BlogPage';
 import CareersPage from './pages/CareersPage';
 import { AdminGuard } from './components/auth/AdminGuard';
 import { AdminScopeGuard } from './components/auth/AdminScopeGuard';
+
+function DashboardRoleRedirect() {
+  const { role } = useAuthStore();
+  return <Navigate to={getDefaultPathForRole(role)} replace />;
+}
 
 function App() {
   return (
@@ -80,7 +89,7 @@ function App() {
 
           <Route path="/dashboard" element={
             <AuthGuard>
-              <Navigate to="/dashboard/contributor" replace />
+              <DashboardRoleRedirect />
             </AuthGuard>
           } />
 
@@ -95,6 +104,30 @@ function App() {
           <Route path="/dashboard/contributor" element={
             <AuthGuard requireRole="contributor">
               <ContributorDashboard />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/contributor/explore" element={
+            <AuthGuard requireRole="contributor">
+              <MissionExplorePage />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/contributor/missions/:id" element={
+            <AuthGuard requireRole="contributor">
+              <MissionDetailsPage />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/initiator/network" element={
+            <AuthGuard requireRole="initiator">
+              <NetworkPage />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/initiator/missions/:id" element={
+            <AuthGuard requireRole="initiator">
+              <MissionDetailsPage />
             </AuthGuard>
           } />
 
@@ -216,9 +249,21 @@ function App() {
               </AdminScopeGuard>
             </AdminGuard>
           } />
+          <Route path="/admin/admins" element={
+            <AdminGuard>
+              <AdminScopeGuard requiredScopes={['admins.manage']}>
+                <AdminAdminsPage />
+              </AdminScopeGuard>
+            </AdminGuard>
+          } />
+          <Route path="/admin/security" element={
+            <AdminGuard>
+              <AdminSecurityPage />
+            </AdminGuard>
+          } />
           <Route path="/admin/settings" element={
             <AdminGuard>
-              <Navigate to="/admin" replace />
+              <Navigate to="/admin/security" replace />
             </AdminGuard>
           } />
           <Route path="/admin/*" element={
