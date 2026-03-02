@@ -11,7 +11,12 @@ export const useApi = (endpoint, options = {}) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const { immediate = true } = options;
+    const {
+        immediate = true,
+        deps = [],
+        resetOnFetch = false,
+    } = options;
+    const depsKey = JSON.stringify(Array.isArray(deps) ? deps : []);
 
     const fetchData = useCallback(async () => {
         if (!endpoint) {
@@ -20,6 +25,9 @@ export const useApi = (endpoint, options = {}) => {
         }
         setLoading(true);
         setError(null);
+        if (resetOnFetch) {
+            setData(null);
+        }
         try {
             const response = await api.get(endpoint);
             setData(response.data);
@@ -39,7 +47,7 @@ export const useApi = (endpoint, options = {}) => {
         } finally {
             setLoading(false);
         }
-    }, [endpoint]);
+    }, [endpoint, resetOnFetch]);
 
     useEffect(() => {
         if (immediate) {
@@ -47,7 +55,7 @@ export const useApi = (endpoint, options = {}) => {
         } else {
             setLoading(false);
         }
-    }, [fetchData, immediate]);
+    }, [fetchData, immediate, depsKey]);
 
     return { data, loading, error, refetch: fetchData, setData };
 };
@@ -105,11 +113,26 @@ export const useContributors = () => {
     return useApi('/api/v1/contributors/public');
 };
 
+export const useUserSearch = (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        queryParams.append(key, `${value}`);
+    });
+    const queryString = queryParams.toString();
+    const endpoint = `/api/v1/search/users${queryString ? `?${queryString}` : ''}`;
+    return useApi(endpoint);
+};
+
 /**
  * Hook for fetching contributor profile
  */
 export const useContributorProfile = () => {
     return useApi('/api/v1/contributors/me');
+};
+
+export const useRoleCapabilities = (options = {}) => {
+    return useApi('/api/v1/users/me/role-capabilities', options);
 };
 
 export default useApi;
