@@ -32,7 +32,9 @@ describe('AdminGuard', () => {
             isAuthenticated: false,
             isLoading: false,
             role: null,
+            adminAccess: null,
             refreshProfile: vi.fn(),
+            refreshAdminAccess: vi.fn(),
         });
 
         renderGuard();
@@ -45,7 +47,9 @@ describe('AdminGuard', () => {
             isAuthenticated: true,
             isLoading: false,
             role: 'contributor',
+            adminAccess: null,
             refreshProfile: vi.fn(),
+            refreshAdminAccess: vi.fn(),
         });
 
         renderGuard();
@@ -58,7 +62,15 @@ describe('AdminGuard', () => {
             isAuthenticated: true,
             isLoading: false,
             role: 'admin',
+            adminAccess: {
+                adminType: 'super_admin',
+                isActive: true,
+                mfaRequired: false,
+                mfaSatisfied: true,
+                mfaEnforcementMode: 'warn',
+            },
             refreshProfile: vi.fn(),
+            refreshAdminAccess: vi.fn(),
         });
 
         renderGuard();
