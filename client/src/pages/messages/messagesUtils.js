@@ -13,6 +13,13 @@ export const getOtherParticipantName = (conversation, currentUserId) => {
     return names.join(', ');
 };
 
+export const getOtherParticipantProfile = (conversation, currentUserId) => {
+    const otherParticipantIds = getOtherParticipantIds(conversation, currentUserId);
+    if (otherParticipantIds.length === 0) return null;
+    const firstId = otherParticipantIds[0];
+    return conversation?.participantProfiles?.[firstId] || null;
+};
+
 export const getOtherParticipantInitial = (conversation, currentUserId) => {
     const name = getOtherParticipantName(conversation, currentUserId);
     return name.charAt(0).toUpperCase() || 'U';
