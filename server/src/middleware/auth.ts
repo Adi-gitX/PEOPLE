@@ -4,6 +4,8 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 
 type UserRole = 'contributor' | 'initiator' | 'admin';
 const USERS_COLLECTION = 'users';
+const CONTRIBUTOR_PROFILES_COLLECTION = 'contributorProfiles';
+const INITIATOR_PROFILES_COLLECTION = 'initiatorProfiles';
 
 declare global {
     namespace Express {
@@ -19,6 +21,14 @@ const getUserRole = async (uid: string): Promise<UserRole | undefined> => {
     if (!userDoc.exists) return undefined;
     const role = userDoc.data()?.primaryRole as UserRole | undefined;
     return role;
+};
+
+const hasRoleProfile = async (uid: string, role: 'contributor' | 'initiator'): Promise<boolean> => {
+    const collection = role === 'contributor'
+        ? CONTRIBUTOR_PROFILES_COLLECTION
+        : INITIATOR_PROFILES_COLLECTION;
+    const doc = await db.collection(collection).doc(uid).get();
+    return doc.exists;
 };
 
 export const requireAuth = async (
@@ -87,14 +97,31 @@ export const requireRole = (roles: string[]) => {
             req.userRole = userRole;
         }
 
-        if (!userRole || !roles.includes(userRole)) {
-            res.status(403).json({
-                error: 'Forbidden',
-                message: `Required role: ${roles.join(' or ')}`,
-            });
+        if (userRole && roles.includes(userRole)) {
+            next();
             return;
         }
 
-        next();
+        const requestedProfileRoles = roles.filter(
+            (role): role is 'contributor' | 'initiator' => role === 'contributor' || role === 'initiator'
+        );
+
+        if (requestedProfileRoles.length > 0) {
+            for (const role of requestedProfileRoles) {
+                try {
+                    if (await hasRoleProfile(req.user.uid, role)) {
+                        next();
+                        return;
+                    }
+                } catch {
+                    // ignore profile capability lookup failure and fall through to forbidden
+                }
+            }
+        }
+
+        res.status(403).json({
+            error: 'Forbidden',
+            message: `Required role: ${roles.join(' or ')}`,
+        });
     };
 };
