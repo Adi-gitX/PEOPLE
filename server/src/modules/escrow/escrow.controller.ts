@@ -5,6 +5,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import * as escrowService from './escrow.service.js';
+import * as paymentsService from '../payments/payments.service.js';
+import { db } from '../../config/firebase.js';
 
 /**
  * Create escrow account for a mission
@@ -60,6 +62,115 @@ export const getEscrowByMission = async (
         res.json({
             success: true,
             data: escrow,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Create funding intent/order for a mission escrow
+ * POST /api/v1/escrow/:missionId/fund-intent
+ */
+export const createFundingIntent = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const userId = req.user?.uid;
+        const role = req.userRole;
+        const { missionId } = req.params;
+        const { amount, currency, provider } = req.body;
+
+        if (!userId) {
+            res.status(401).json({
+                success: false,
+                error: 'User ID not found in token',
+            });
+            return;
+        }
+
+        const missionDoc = await db.collection('missions').doc(missionId).get();
+        if (!missionDoc.exists) {
+            res.status(404).json({
+                success: false,
+                error: 'Mission not found',
+            });
+            return;
+        }
+
+        const missionData = missionDoc.data();
+        if (role !== 'admin' && missionData?.initiatorId !== userId) {
+            res.status(403).json({
+                success: false,
+                error: 'Not authorized to fund this mission',
+            });
+            return;
+        }
+
+        const intent = await paymentsService.createEscrowFundingIntent({
+            missionId,
+            initiatorId: missionData?.initiatorId || userId,
+            actingUserRole: role === 'admin' ? 'admin' : 'initiator',
+            amount,
+            currency,
+            provider,
+        });
+
+        res.status(201).json({
+            success: true,
+            data: intent,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get mission escrow/payment status
+ * GET /api/v1/escrow/:missionId/status
+ */
+export const getMissionEscrowStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const userId = req.user?.uid;
+        const role = req.userRole;
+        const { missionId } = req.params;
+
+        if (!userId) {
+            res.status(401).json({
+                success: false,
+                error: 'User ID not found in token',
+            });
+            return;
+        }
+
+        const missionDoc = await db.collection('missions').doc(missionId).get();
+        if (!missionDoc.exists) {
+            res.status(404).json({
+                success: false,
+                error: 'Mission not found',
+            });
+            return;
+        }
+
+        const missionData = missionDoc.data();
+        if (role !== 'admin' && missionData?.initiatorId !== userId) {
+            res.status(403).json({
+                success: false,
+                error: 'Not authorized to view mission escrow status',
+            });
+            return;
+        }
+
+        const status = await paymentsService.getMissionFundingStatus(missionId);
+        res.json({
+            success: true,
+            data: status,
         });
     } catch (error) {
         next(error);
@@ -170,6 +281,7 @@ export const releaseFunds = async (
         res.json({
             success: true,
             data: result.transaction,
+            warning: result.warning,
         });
     } catch (error) {
         next(error);
