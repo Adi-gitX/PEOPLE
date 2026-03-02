@@ -24,6 +24,7 @@ export default function AdminUsersPage() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState({ role: '', status: '', search: '' });
     const [total, setTotal] = useState(0);
+    const [processingActionId, setProcessingActionId] = useState('');
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
@@ -48,22 +49,34 @@ export default function AdminUsersPage() {
     }, [fetchUsers]);
 
     const handleStatusUpdate = async (userId, status) => {
+        const needsConfirmation = status === 'suspended' || status === 'banned';
+        if (needsConfirmation) {
+            const actionLabel = status === 'suspended' ? 'suspend' : 'ban';
+            if (!window.confirm(`Are you sure you want to ${actionLabel} this user?`)) return;
+        }
+
+        setProcessingActionId(`${userId}:${status}`);
         try {
             await api.patch(`/api/v1/admin/users/${userId}/status`, { status });
             toast.success(`User status updated to ${status}`);
             fetchUsers();
         } catch {
             toast.error('Failed to update user status');
+        } finally {
+            setProcessingActionId('');
         }
     };
 
     const handleVerify = async (userId) => {
+        setProcessingActionId(`${userId}:verify`);
         try {
             await api.patch(`/api/v1/admin/users/${userId}/verify`);
             toast.success('User verified successfully');
             fetchUsers();
         } catch {
             toast.error('Failed to verify user');
+        } finally {
+            setProcessingActionId('');
         }
     };
 
@@ -154,6 +167,7 @@ export default function AdminUsersPage() {
                                 {filteredUsers.map((user) => {
                                     const statusConfig = STATUS_CONFIG[user.accountStatus] || STATUS_CONFIG.active;
                                     const roleConfig = ROLE_CONFIG[user.primaryRole] || ROLE_CONFIG.contributor;
+                                    const rowBusy = processingActionId.startsWith(`${user.id}:`);
 
                                     return (
                                         <tr key={user.id} className="hover:bg-white/[0.02] transition-colors group">
@@ -185,6 +199,7 @@ export default function AdminUsersPage() {
                                                 <div className="flex items-center justify-end gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => handleVerify(user.id)}
+                                                        disabled={rowBusy}
                                                         className="p-2 text-neutral-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all"
                                                         title="Verify"
                                                     >
@@ -193,6 +208,7 @@ export default function AdminUsersPage() {
                                                     {user.accountStatus !== 'suspended' && (
                                                         <button
                                                             onClick={() => handleStatusUpdate(user.id, 'suspended')}
+                                                            disabled={rowBusy}
                                                             className="p-2 text-neutral-400 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-all"
                                                             title="Suspend"
                                                         >
@@ -202,6 +218,7 @@ export default function AdminUsersPage() {
                                                     {user.accountStatus === 'suspended' && (
                                                         <button
                                                             onClick={() => handleStatusUpdate(user.id, 'active')}
+                                                            disabled={rowBusy}
                                                             className="p-2 text-neutral-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all"
                                                             title="Reactivate"
                                                         >
@@ -211,6 +228,7 @@ export default function AdminUsersPage() {
                                                     {user.accountStatus !== 'banned' && (
                                                         <button
                                                             onClick={() => handleStatusUpdate(user.id, 'banned')}
+                                                            disabled={rowBusy}
                                                             className="p-2 text-neutral-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                                                             title="Ban"
                                                         >
