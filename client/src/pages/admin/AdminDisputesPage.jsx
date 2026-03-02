@@ -20,6 +20,7 @@ export default function AdminDisputesPage() {
     const [selectedDispute, setSelectedDispute] = useState(null);
     const [resolution, setResolution] = useState('');
     const [favoredParty, setFavoredParty] = useState('');
+    const [resolving, setResolving] = useState(false);
 
     const fetchDisputes = useCallback(async () => {
         setLoading(true);
@@ -46,7 +47,11 @@ export default function AdminDisputesPage() {
             toast.error('Please provide resolution and select favored party');
             return;
         }
+        if (!window.confirm('Are you sure you want to resolve this dispute now?')) {
+            return;
+        }
 
+        setResolving(true);
         try {
             await api.patch(`/api/v1/admin/disputes/${selectedDispute.id}/resolve`, {
                 resolution: resolution.trim(),
@@ -59,6 +64,8 @@ export default function AdminDisputesPage() {
             fetchDisputes();
         } catch {
             toast.error('Failed to resolve dispute');
+        } finally {
+            setResolving(false);
         }
     };
 
@@ -207,16 +214,20 @@ export default function AdminDisputesPage() {
 
                             <div className="flex gap-3">
                                 <button
+                                    type="button"
                                     onClick={() => setSelectedDispute(null)}
-                                    className="flex-1 px-4 py-2 border border-zinc-700 text-white rounded-lg hover:bg-zinc-800 transition-colors"
+                                    disabled={resolving}
+                                    className="flex-1 px-4 py-2 border border-zinc-700 text-white rounded-lg hover:bg-zinc-800 transition-colors disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleResolve}
-                                    className="flex-1 px-4 py-2 bg-white text-black rounded-lg hover:bg-zinc-200 transition-colors"
+                                    disabled={resolving}
+                                    className="flex-1 px-4 py-2 bg-white text-black rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50"
                                 >
-                                    Resolve
+                                    {resolving ? 'Resolving...' : 'Resolve'}
                                 </button>
                             </div>
                         </div>
