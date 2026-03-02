@@ -14,7 +14,10 @@
     "test": "vitest run",
     "check:system": "tsx src/startup/preflight.ts",
     "smoke:postdeploy": "bash ../scripts/post-deploy-smoke.sh",
-    "admin:bootstrap-profiles": "tsx src/scripts/backfillAdminProfiles.ts"
+    "admin:bootstrap-profiles": "tsx src/scripts/backfillAdminProfiles.ts",
+    "admin:promote": "tsx src/scripts/promoteAdminByEmail.ts",
+    "admin:upsert": "tsx src/scripts/upsertAdminAccount.ts",
+    "roles:backfill-dual": "tsx src/scripts/backfillDualRoleProfiles.ts"
   },
   "keywords": [
     "people",
