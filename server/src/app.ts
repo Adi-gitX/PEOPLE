@@ -27,6 +27,7 @@ import { favoritesRoutes } from './modules/favorites/index.js';
 import { escrowRoutes } from './modules/escrow/index.js';
 import { walletRoutes } from './modules/wallet/index.js';
 import { leadsRoutes } from './modules/leads/index.js';
+import { supportRoutes, internalSupportRoutes } from './modules/support/index.js';
 
 const app: Express = express();
 
@@ -55,6 +56,8 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
 }));
 
+// Payment providers require the exact raw payload for webhook signature verification
+app.use('/api/v1/payments/webhooks', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(sanitizeRequest);
@@ -77,7 +80,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
         modules: [
             'users', 'contributors', 'missions', 'proposals', 'contracts',
             'payments', 'withdrawals', 'matching', 'disputes', 'invoices',
-            'teams', 'portfolio', 'favorites', 'reviews', 'notifications'
+            'teams', 'portfolio', 'favorites', 'reviews', 'notifications',
+            'escrow', 'wallet', 'leads', 'messages', 'support'
         ],
     });
 });
@@ -91,12 +95,24 @@ app.use('/api/v1/notifications', notificationsRoutes);
 app.use('/api/v1/conversations', messagesRoutes);
 app.use('/api/v1/reviews', reviewsRoutes);
 app.use('/api/v1/contact', contactRoutes);
+app.use('/api/v1/support', supportRoutes);
+app.use('/api/v1/internal/support', internalSupportRoutes);
 app.use('/api/v1/leads', leadsRoutes);
 app.use('/api/v1/auth/otp', otpLimiter, otpRoutes);
 app.use('/api/v1/proposals', proposalsRoutes);
 app.use('/api/v1/contracts', contractsRoutes);
 app.use('/api/v1/matching', matchingRoutes);
-app.use('/api/v1/payments', paymentLimiter, paymentsRoutes);
+app.use(
+    '/api/v1/payments',
+    (req: Request, res: Response, next: NextFunction) => {
+        if (req.path.startsWith('/webhooks/')) {
+            next();
+            return;
+        }
+        paymentLimiter(req, res, next);
+    },
+    paymentsRoutes
+);
 app.use('/api/v1/withdrawals', paymentLimiter, withdrawalsRoutes);
 app.use('/api/v1/invoices', invoicesRoutes);
 app.use('/api/v1/disputes', disputesRoutes);
