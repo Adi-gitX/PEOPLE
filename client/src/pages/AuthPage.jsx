@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { LoginForm } from '../components/auth/LoginForm';
-import { SignupForm } from '../components/auth/SignupForm';
 import { EmailOtpForm } from '../components/auth/EmailOtpForm';
 import { PublicLayout } from '../components/layout/PublicLayout';
 import { KeyRound, Sparkles } from 'lucide-react';
@@ -14,29 +13,17 @@ export default function AuthPage() {
     const { isAuthenticated, role, isLoading } = useAuthStore();
 
     const urlMode = searchParams.get('mode');
-    const isEmailLink = searchParams.get('emailLink') === 'true';
     const initialMode = urlMode === 'signup' || window.location.pathname === '/signup' ? 'signup' : 'login';
 
     const [mode, setMode] = useState(initialMode);
-    const [authMethod, setAuthMethod] = useState('magic');
+    const [authMethod, setAuthMethod] = useState('otp');
 
     useEffect(() => {
-        if (!isLoading && isAuthenticated && role && !isEmailLink) {
+        if (!isLoading && isAuthenticated && role) {
             const dashboardPath = getDefaultPathForRole(role);
             navigate(dashboardPath, { replace: true });
         }
-    }, [isAuthenticated, role, isLoading, navigate, isEmailLink]);
-
-    if (isEmailLink && isLoading) {
-        return (
-            <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
-                    <p className="text-zinc-500">Signing you in...</p>
-                </div>
-            </div>
-        );
-    }
+    }, [isAuthenticated, role, isLoading, navigate]);
 
     return (
         <PublicLayout showFooter={false}>
@@ -56,14 +43,14 @@ export default function AuthPage() {
                     {mode === 'login' ? (
                         <div className="flex bg-zinc-900 rounded-lg p-1">
                             <button
-                                onClick={() => setAuthMethod('magic')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'magic'
+                                onClick={() => setAuthMethod('otp')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'otp'
                                     ? 'bg-white text-black'
                                     : 'text-zinc-400 hover:text-white'
                                     }`}
                             >
                                 <Sparkles className="w-4 h-4" />
-                                Magic Link
+                                Email OTP
                             </button>
                             <button
                                 onClick={() => setAuthMethod('password')}
@@ -84,11 +71,9 @@ export default function AuthPage() {
                     )}
 
                     <div>
-                        {mode === 'signup' || authMethod === 'magic' ? (
-                            <EmailOtpForm mode={mode} />
-                        ) : (
-                            mode === 'login' ? <LoginForm /> : <SignupForm />
-                        )}
+                        {mode === 'signup' || authMethod === 'otp'
+                            ? <EmailOtpForm mode={mode} />
+                            : <LoginForm />}
 
                         <div className="mt-8 text-center text-sm">
                             <span className="text-muted-foreground">
@@ -98,7 +83,7 @@ export default function AuthPage() {
                                 onClick={() => {
                                     const nextMode = mode === 'login' ? 'signup' : 'login';
                                     if (nextMode === 'signup') {
-                                        setAuthMethod('magic');
+                                        setAuthMethod('otp');
                                     }
                                     setMode(nextMode);
                                 }}
