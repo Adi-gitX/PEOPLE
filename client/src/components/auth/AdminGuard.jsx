@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { Loader2 } from 'lucide-react';
 
 export function AdminGuard({ children }) {
-    const { user, isAuthenticated, isLoading, role, refreshProfile } = useAuthStore();
+    const { user, isAuthenticated, isLoading, role, adminAccess, refreshProfile, refreshAdminAccess } = useAuthStore();
     const [checkingRole, setCheckingRole] = useState(true);
 
     useEffect(() => {
@@ -16,13 +16,20 @@ export function AdminGuard({ children }) {
                     // Silent fail, handled by role check below
                 }
             }
+            if (!isLoading && isAuthenticated && (role === 'admin' || (!role && user?.uid))) {
+                try {
+                    await refreshAdminAccess();
+                } catch {
+                    // Scope details will be handled by page-level checks
+                }
+            }
             setCheckingRole(false);
         };
 
         if (!isLoading) {
             ensureRole();
         }
-    }, [isAuthenticated, isLoading, role, refreshProfile]);
+    }, [isAuthenticated, isLoading, role, user?.uid, refreshProfile, refreshAdminAccess]);
 
     if (isLoading || checkingRole) {
         return (
@@ -45,6 +52,23 @@ export function AdminGuard({ children }) {
                     <p className="text-zinc-400 mb-6">You don't have permission to access the admin panel.</p>
                     <Link
                         to={fallbackPath}
+                        className="px-4 py-2 bg-white text-black rounded font-medium hover:bg-zinc-200 transition-colors"
+                    >
+                        Go to Dashboard
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    if (adminAccess && adminAccess.isActive === false) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center p-6">
+                <div className="text-center">
+                    <h1 className="text-3xl font-bold text-white mb-4">Admin Access Disabled</h1>
+                    <p className="text-zinc-400 mb-6">Your admin account is currently inactive.</p>
+                    <Link
+                        to="/dashboard/contributor"
                         className="px-4 py-2 bg-white text-black rounded font-medium hover:bg-zinc-200 transition-colors"
                     >
                         Go to Dashboard
