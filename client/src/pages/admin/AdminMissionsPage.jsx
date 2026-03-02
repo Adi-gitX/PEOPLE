@@ -22,6 +22,7 @@ export default function AdminMissionsPage() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState({ status: '', search: '' });
     const [total, setTotal] = useState(0);
+    const [processingMissionId, setProcessingMissionId] = useState('');
 
     const fetchMissions = useCallback(async () => {
         setLoading(true);
@@ -47,12 +48,15 @@ export default function AdminMissionsPage() {
     const handleCancel = async (missionId) => {
         if (!confirm('Are you sure you want to cancel this mission?')) return;
 
+        setProcessingMissionId(missionId);
         try {
             await api.patch(`/api/v1/admin/missions/${missionId}/cancel`);
             toast.success('Mission cancelled');
             fetchMissions();
         } catch {
             toast.error('Failed to cancel mission');
+        } finally {
+            setProcessingMissionId('');
         }
     };
 
@@ -168,6 +172,7 @@ export default function AdminMissionsPage() {
                                                     {!['cancelled', 'completed'].includes(mission.status) && (
                                                         <button
                                                             onClick={() => handleCancel(mission.id)}
+                                                            disabled={processingMissionId === mission.id}
                                                             className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors"
                                                             title="Cancel"
                                                         >
