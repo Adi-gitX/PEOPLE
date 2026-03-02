@@ -1,6 +1,8 @@
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
+    getMultiFactorResolver,
+    TotpMultiFactorGenerator,
     signInWithPopup,
     GoogleAuthProvider,
     GithubAuthProvider,
@@ -48,7 +50,20 @@ export const signUp = async (email, password, fullName, role = 'contributor') =>
  * Sign in with email and password
  */
 export const signIn = async (email, password) => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    let userCredential;
+    try {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+        if (error?.code === 'auth/multi-factor-auth-required') {
+            const resolver = getMultiFactorResolver(auth, error);
+            const enhancedError = new Error('Multi-factor authentication required');
+            enhancedError.code = error.code;
+            enhancedError.resolver = resolver;
+            enhancedError.hints = resolver.hints;
+            throw enhancedError;
+        }
+        throw error;
+    }
 
     // Wait for the auth state to fully propagate
     await new Promise((resolve) => {
@@ -61,6 +76,28 @@ export const signIn = async (email, password) => {
     });
 
     return userCredential.user;
+};
+
+export const completeTotpSignIn = async (resolver, verificationCode) => {
+    if (!resolver) {
+        throw new Error('Missing multi-factor resolver');
+    }
+    const trimmedCode = `${verificationCode || ''}`.trim();
+    if (trimmedCode.length < 6) {
+        const error = new Error('Verification code must be at least 6 digits');
+        error.code = 'auth/invalid-verification-code';
+        throw error;
+    }
+
+    const preferredHint = resolver.hints?.find((hint) => hint.factorId === TotpMultiFactorGenerator.FACTOR_ID)
+        || resolver.hints?.[0];
+    if (!preferredHint?.uid) {
+        throw new Error('No enrolled MFA factor available for this account');
+    }
+
+    const assertion = TotpMultiFactorGenerator.assertionForSignIn(preferredHint.uid, trimmedCode);
+    const credential = await resolver.resolveSignIn(assertion);
+    return credential.user;
 };
 
 // ─── OAuth Auth ───
@@ -151,6 +188,7 @@ export default {
     signIn,
     signInWithGoogle,
     signInWithGithub,
+    completeTotpSignIn,
     logout,
     resetPassword,
     getCurrentUser,
