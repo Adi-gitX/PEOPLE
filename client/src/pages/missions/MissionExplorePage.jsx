@@ -59,12 +59,6 @@ export default function MissionExplorePage() {
         refetch();
     }, [filters.type, filters.complexity, refetch]);
 
-                {error && (
-                    <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
-                        Failed to load missions from the server. Please refresh and try again.
-                    </div>
-                )}
-
     return (
         <PublicLayout>
             <div className="pt-16 pb-20 px-6 max-w-7xl mx-auto">
@@ -161,6 +155,12 @@ export default function MissionExplorePage() {
                                 </button>
                             </span>
                         )}
+                    </div>
+                )}
+
+                {error && (
+                    <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+                        Failed to load missions from the server. Please refresh and try again.
                     </div>
                 )}
 
