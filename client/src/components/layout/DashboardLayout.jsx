@@ -30,20 +30,20 @@ import {
 const contributorNavItems = [
     { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard/contributor' },
     { label: 'Explore Missions', icon: Compass, href: '/dashboard/contributor/explore' },
-    { label: 'My Applications', icon: FileText, href: '/applications' },
-    { label: 'Messages', icon: MessageSquare, href: '/messages' },
-    { label: 'Notifications', icon: Bell, href: '/notifications' },
-    { label: 'Wallet', icon: Wallet, href: '/wallet' },
+    { label: 'My Applications', icon: FileText, href: '/dashboard/contributor/applications' },
+    { label: 'Messages', icon: MessageSquare, href: '/dashboard/contributor/messages' },
+    { label: 'Notifications', icon: Bell, href: '/dashboard/contributor/notifications' },
+    { label: 'Wallet', icon: Wallet, href: '/dashboard/contributor/wallet' },
     { label: 'Profile', icon: User, href: '/dashboard/profile' },
 ];
 
 const initiatorNavItems = [
     { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard/initiator' },
-    { label: 'Create Mission', icon: Plus, href: '/missions/new' },
+    { label: 'Create Mission', icon: Plus, href: '/dashboard/initiator/missions/new' },
     { label: 'Explore Talent', icon: Users, href: '/dashboard/initiator/network' },
-    { label: 'Messages', icon: MessageSquare, href: '/messages' },
-    { label: 'Notifications', icon: Bell, href: '/notifications' },
-    { label: 'Wallet', icon: Wallet, href: '/wallet' },
+    { label: 'Messages', icon: MessageSquare, href: '/dashboard/initiator/messages' },
+    { label: 'Notifications', icon: Bell, href: '/dashboard/initiator/notifications' },
+    { label: 'Wallet', icon: Wallet, href: '/dashboard/initiator/wallet' },
     { label: 'Profile', icon: User, href: '/dashboard/profile' },
 ];
 
