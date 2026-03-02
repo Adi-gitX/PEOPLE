@@ -9,7 +9,7 @@ import {
     MessageSquare,
     Bell,
     Wallet,
-    Settings,
+    User,
     Plus,
     Users,
     Menu,
@@ -18,7 +18,8 @@ import {
     Briefcase,
     Zap,
     ChevronRight,
-    AlertTriangle
+    AlertTriangle,
+    LifeBuoy
 } from 'lucide-react';
 
 const contributorNavItems = [
@@ -28,7 +29,7 @@ const contributorNavItems = [
     { label: 'Messages', icon: MessageSquare, href: '/messages' },
     { label: 'Notifications', icon: Bell, href: '/notifications' },
     { label: 'Wallet', icon: Wallet, href: '/wallet' },
-    { label: 'Profile', icon: Settings, href: '/dashboard/profile' },
+    { label: 'Profile', icon: User, href: '/dashboard/profile' },
 ];
 
 const initiatorNavItems = [
@@ -38,19 +39,24 @@ const initiatorNavItems = [
     { label: 'Messages', icon: MessageSquare, href: '/messages' },
     { label: 'Notifications', icon: Bell, href: '/notifications' },
     { label: 'Wallet', icon: Wallet, href: '/wallet' },
-    { label: 'Profile', icon: Settings, href: '/dashboard/profile' },
+    { label: 'Profile', icon: User, href: '/dashboard/profile' },
 ];
 
 const adminNavItems = [
     { label: 'Overview', icon: LayoutDashboard, href: '/admin' },
-    { label: 'Users', icon: Users, href: '/admin/users' },
-    { label: 'Missions', icon: Briefcase, href: '/admin/missions' },
-    { label: 'Disputes', icon: AlertTriangle, href: '/admin/disputes' },
+    { label: 'Users', icon: Users, href: '/admin/users', scopes: ['users.read'] },
+    { label: 'Missions', icon: Briefcase, href: '/admin/missions', scopes: ['missions.read'] },
+    { label: 'Disputes', icon: AlertTriangle, href: '/admin/disputes', scopes: ['disputes.read'] },
+    { label: 'Support', icon: LifeBuoy, href: '/admin/support', scopes: ['support.read'] },
+    { label: 'Messages', icon: MessageSquare, href: '/admin/messages', scopes: ['messages.read'] },
+    { label: 'Withdrawals', icon: Wallet, href: '/admin/withdrawals', scopes: ['withdrawals.read'] },
+    { label: 'Payments', icon: Target, href: '/admin/payments', scopes: ['payments.read', 'escrow.read'] },
+    { label: 'Audit Log', icon: FileText, href: '/admin/audit', scopes: ['audit.read'] },
 ];
 
 export function DashboardLayout({ children }) {
     const location = useLocation();
-    const { role, user } = useAuthStore();
+    const { role, user, adminAccess } = useAuthStore();
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // Handle resize to auto-close/open sidebar logic if needed
@@ -65,7 +71,21 @@ export function DashboardLayout({ children }) {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const navItems = role === 'admin' ? adminNavItems : role === 'initiator' ? initiatorNavItems : contributorNavItems;
+    const navItems = (() => {
+        if (role !== 'admin') {
+            return role === 'initiator' ? initiatorNavItems : contributorNavItems;
+        }
+
+        if (!adminAccess || adminAccess.adminType === 'super_admin') {
+            return adminNavItems;
+        }
+
+        const scopeSet = new Set(adminAccess.scopes || []);
+        return adminNavItems.filter((item) => {
+            if (!item.scopes || item.scopes.length === 0) return true;
+            return item.scopes.every((scope) => scopeSet.has(scope));
+        });
+    })();
 
     const isActive = (href) => {
         if (href === '/dashboard/contributor' || href === '/dashboard/initiator' || href === '/admin') {
