@@ -3,6 +3,7 @@ set -euo pipefail
 
 BASE_URL="${BASE_URL:-}"
 AUTH_TOKEN="${AUTH_TOKEN:-}"
+CLIENT_BASE_URL="${CLIENT_BASE_URL:-}"
 
 if [[ -z "$BASE_URL" ]]; then
   echo "Usage: BASE_URL=https://api.example.com [AUTH_TOKEN=...] $0"
@@ -29,15 +30,99 @@ check() {
   echo "    ok"
 }
 
+check_status() {
+  local label="$1"
+  local url="$2"
+  local expected_csv="$3"
+  local method="${4:-GET}"
+  local body="${5:-}"
+  local auth="${6:-false}"
+
+  echo "==> ${label}"
+
+  local status
+  if [[ "$method" == "POST" ]]; then
+    if [[ "$auth" == "true" && -n "$AUTH_TOKEN" ]]; then
+      status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${AUTH_TOKEN}" \
+        -d "$body" "${url}")
+    elif [[ "$auth" == "true" ]]; then
+      status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
+        -H "Content-Type: application/json" \
+        -d "$body" "${url}")
+    else
+      status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
+        -H "Content-Type: application/json" \
+        -d "$body" "${url}")
+    fi
+  else
+    if [[ "$auth" == "true" && -n "$AUTH_TOKEN" ]]; then
+      status=$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${AUTH_TOKEN}" "${url}")
+    elif [[ "$auth" == "true" ]]; then
+      status=$(curl -sS -o /dev/null -w "%{http_code}" "${url}")
+    else
+      status=$(curl -sS -o /dev/null -w "%{http_code}" "${url}")
+    fi
+  fi
+
+  IFS=',' read -r -a expected <<< "$expected_csv"
+  for code in "${expected[@]}"; do
+    if [[ "$status" == "$code" ]]; then
+      echo "    ok (HTTP ${status})"
+      return
+    fi
+  done
+
+  echo "    failed (HTTP ${status}, expected: ${expected_csv})"
+  exit 1
+}
+
 echo "Running smoke checks against ${BASE_URL}"
 
 check "API health" "${BASE_URL}/api/health"
 check "Public missions" "${BASE_URL}/api/v1/missions"
 check "Public contributors" "${BASE_URL}/api/v1/contributors/public"
-check "Public FAQ page (client route if same host)" "${BASE_URL}/faq"
+
+if [[ -n "$CLIENT_BASE_URL" ]]; then
+  CLIENT_BASE_URL="${CLIENT_BASE_URL%/}"
+  check "Public FAQ page" "${CLIENT_BASE_URL}/faq"
+else
+  echo "==> Public FAQ page"
+  echo "    skipped (set CLIENT_BASE_URL to verify client routes)"
+fi
+
+check_status \
+  "Public support ticket create" \
+  "${BASE_URL}/api/v1/support/tickets" \
+  "200,202" \
+  "POST" \
+  '{"name":"Smoke Test","email":"smoke@example.com","subject":"Smoke check","message":"This is a smoke test message for support reliability.","source":"post_deploy_smoke"}'
+
+check_status \
+  "Admin support list requires auth" \
+  "${BASE_URL}/api/v1/admin/support/tickets" \
+  "401,403"
+
+check_status \
+  "Support alias contact endpoint" \
+  "${BASE_URL}/api/v1/contact" \
+  "200,202" \
+  "POST" \
+  '{"name":"Smoke Contact","email":"smoke-contact@example.com","subject":"Contact alias check","message":"This message validates the /api/v1/contact alias endpoint.","source":"post_deploy_smoke"}'
 
 check "Current user profile" "${BASE_URL}/api/v1/users/me" true
 check "My conversations" "${BASE_URL}/api/v1/conversations" true
 check "Wallet summary" "${BASE_URL}/api/v1/wallet/summary" true
+
+if [[ -n "$AUTH_TOKEN" ]]; then
+  check_status \
+    "Internal support outbox process endpoint reachable (admin auth required)" \
+    "${BASE_URL}/api/v1/internal/support/outbox/process" \
+    "200,403" \
+    "POST" \
+    '{"limit":1}' \
+    "true"
+fi
 
 echo "Smoke checks completed."
