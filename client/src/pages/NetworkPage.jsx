@@ -6,12 +6,19 @@ import { Users, Shield, Zap, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/useAuthStore';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
 export default function NetworkPage() {
+    const location = useLocation();
     const { isAuthenticated, role } = useAuthStore();
-    const useDashboardLayout = isAuthenticated && (role === 'contributor' || role === 'initiator');
+    const isDashboardRoute = location.pathname.startsWith('/dashboard/');
+    const scopedRole = location.pathname.startsWith('/dashboard/initiator')
+        ? 'initiator'
+        : location.pathname.startsWith('/dashboard/contributor')
+            ? 'contributor'
+            : role;
+    const useDashboardLayout = isDashboardRoute || (isAuthenticated && (scopedRole === 'contributor' || scopedRole === 'initiator'));
     const Layout = useDashboardLayout ? DashboardLayout : PublicLayout;
 
     const [filters, setFilters] = useState({
@@ -39,9 +46,11 @@ export default function NetworkPage() {
             const conversation = response.data?.conversation;
             toast.success(`Conversation started with ${peer.fullName || 'user'}`);
             if (conversation?.id) {
-                navigate('/messages', { state: { conversationId: conversation.id } });
+                navigate(scopedRole === 'initiator' ? '/dashboard/initiator/messages' : '/dashboard/contributor/messages', {
+                    state: { conversationId: conversation.id },
+                });
             } else {
-                navigate('/messages');
+                navigate(scopedRole === 'initiator' ? '/dashboard/initiator/messages' : '/dashboard/contributor/messages');
             }
         } catch (error) {
             toast.error(error.message || 'Failed to start conversation');
