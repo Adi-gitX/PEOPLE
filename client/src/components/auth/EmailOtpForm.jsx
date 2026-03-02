@@ -61,6 +61,8 @@ export function EmailOtpForm({ mode = 'login' }) {
                     const response = await api.get('/api/v1/users/me');
                     const userData = response.data;
 
+                    const activeRole = userData?.activeRole || userData?.user?.primaryRole || 'contributor';
+
                     setAuthState(
                         {
                             uid: result.user.uid,
@@ -69,13 +71,13 @@ export function EmailOtpForm({ mode = 'login' }) {
                             photoURL: result.user.photoURL,
                         },
                         userData?.profile || null,
-                        userData?.user?.primaryRole || 'contributor'
+                        activeRole
                     );
 
                     toast.success('Welcome back!');
                     window.history.replaceState({}, document.title, '/login');
 
-                    const dashboardPath = userData?.user?.primaryRole === 'initiator'
+                    const dashboardPath = activeRole === 'initiator'
                         ? '/dashboard/initiator'
                         : '/dashboard/contributor';
 
@@ -95,6 +97,8 @@ export function EmailOtpForm({ mode = 'login' }) {
                         window.localStorage.removeItem('signupRole');
                         window.localStorage.removeItem('signupName');
 
+                        const activeRole = registerResponse.data?.activeRole || storedRole;
+
                         setAuthState(
                             {
                                 uid: result.user.uid,
@@ -103,13 +107,13 @@ export function EmailOtpForm({ mode = 'login' }) {
                                 photoURL: result.user.photoURL,
                             },
                             registerResponse.data?.profile || null,
-                            storedRole
+                            activeRole
                         );
 
                         toast.success('Account created successfully!');
                         window.history.replaceState({}, document.title, '/login');
 
-                        const dashboardPath = storedRole === 'initiator'
+                        const dashboardPath = activeRole === 'initiator'
                             ? '/dashboard/initiator'
                             : '/dashboard/contributor';
 
