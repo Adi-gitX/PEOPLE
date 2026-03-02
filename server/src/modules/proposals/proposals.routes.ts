@@ -61,8 +61,8 @@ router.post('/:id/accept', requireAuth, async (req, res) => {
 // Reject proposal (initiator)
 router.post('/:id/reject', requireAuth, async (req, res) => {
     try {
-        await proposalsService.updateProposalStatus(req.params.id, 'rejected');
-        res.json({ success: true });
+        const proposal = await proposalsService.rejectProposal(req.params.id);
+        res.json(proposal);
     } catch (error: any) {
         res.status(400).json({ error: error.message });
     }
