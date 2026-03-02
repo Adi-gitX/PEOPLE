@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as paymentsController from './payments.controller.js';
-import { requireAuth } from '../../middleware/auth.js';
+import { requireAuth, requireRole } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { z } from 'zod';
 
@@ -19,7 +19,16 @@ const releaseSchema = z.object({
     amount: z.number().positive(),
 });
 
-router.post('/checkout', requireAuth, validate(checkoutSchema), paymentsController.createCheckout);
+router.post('/webhooks/stripe', paymentsController.stripeWebhook);
+router.post('/webhooks/razorpay', paymentsController.razorpayWebhook);
+
+router.post(
+    '/checkout',
+    requireAuth,
+    requireRole(['initiator', 'admin']),
+    validate(checkoutSchema),
+    paymentsController.createCheckout
+);
 
 router.get('/balance', requireAuth, paymentsController.getMyBalance);
 
@@ -27,6 +36,12 @@ router.get('/history', requireAuth, paymentsController.getMyPaymentHistory);
 
 router.get('/mission/:missionId', requireAuth, paymentsController.getMissionPayments);
 
-router.post('/release', requireAuth, validate(releaseSchema), paymentsController.releaseEscrow);
+router.post(
+    '/release',
+    requireAuth,
+    requireRole(['initiator', 'admin']),
+    validate(releaseSchema),
+    paymentsController.releaseEscrow
+);
 
 export default router;
