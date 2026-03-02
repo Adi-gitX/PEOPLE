@@ -61,6 +61,16 @@ export function Navbar() {
     const isContributor = roleCapabilities.currentRole === 'contributor';
     const dashboardPath = roleCapabilities.routes?.[roleCapabilities.currentRole] || getDefaultPathForRole(roleCapabilities.currentRole);
     const profilePath = roleCapabilities.currentRole === 'admin' ? '/admin/security' : '/dashboard/profile';
+    const messagesPath = roleCapabilities.currentRole === 'initiator'
+        ? '/dashboard/initiator/messages'
+        : roleCapabilities.currentRole === 'admin'
+            ? '/admin/messages'
+            : '/dashboard/contributor/messages';
+    const walletPath = roleCapabilities.currentRole === 'initiator'
+        ? '/dashboard/initiator/wallet'
+        : roleCapabilities.currentRole === 'admin'
+            ? '/admin/payments'
+            : '/dashboard/contributor/wallet';
     const contributorAvailable = roleCapabilities.availableRoles.includes('contributor');
     const initiatorAvailable = roleCapabilities.availableRoles.includes('initiator');
 
@@ -133,7 +143,7 @@ export function Navbar() {
                     {/* Right Side Actions */}
                     <div className="flex items-center gap-2 md:gap-4">
                         {/* Dashboard Switcher - Hide in dashboard as it's in sidebar, show only on public pages if auth */}
-                        {!isDashboard && isAuthenticated && role !== 'admin' && (
+                        {!isDashboard && isAuthenticated && roleCapabilities.currentRole !== 'admin' && (
                             <div className="hidden lg:flex items-center bg-[#0A0A0A] rounded-lg p-0.5 border border-white/[0.08]">
                                 <button
                                     type="button"
@@ -171,10 +181,10 @@ export function Navbar() {
                         {/* Quick Access Icons */}
                         {isAuthenticated && (
                             <div className="hidden sm:flex items-center gap-1">
-                                <Link to="/messages" className="p-2 rounded-lg hover:bg-white/5 transition-colors text-neutral-400 hover:text-white">
+                                <Link to={messagesPath} className="p-2 rounded-lg hover:bg-white/5 transition-colors text-neutral-400 hover:text-white">
                                     <MessageSquare className="w-5 h-5" />
                                 </Link>
-                                <Link to="/wallet" className="p-2 rounded-lg hover:bg-white/5 transition-colors text-neutral-400 hover:text-white">
+                                <Link to={walletPath} className="p-2 rounded-lg hover:bg-white/5 transition-colors text-neutral-400 hover:text-white">
                                     <Wallet className="w-5 h-5" />
                                 </Link>
                                 <NotificationCenter />
@@ -226,7 +236,7 @@ export function Navbar() {
                                                     Dashboard
                                                 </Link>
                                                 <Link
-                                                    to="/messages"
+                                                    to={messagesPath}
                                                     onClick={() => setShowDropdown(false)}
                                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-white/5 sm:hidden"
                                                 >
@@ -234,7 +244,7 @@ export function Navbar() {
                                                     Messages
                                                 </Link>
                                                 <Link
-                                                    to="/wallet"
+                                                    to={walletPath}
                                                     onClick={() => setShowDropdown(false)}
                                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-white/5 sm:hidden"
                                                 >
@@ -327,7 +337,7 @@ export function Navbar() {
                                         Profile
                                     </Link>
                                     <Link
-                                        to="/messages"
+                                        to={messagesPath}
                                         onClick={() => setMobileMenuOpen(false)}
                                         className="flex items-center gap-3 px-4 py-3 rounded-lg text-neutral-400 hover:bg-white/5 hover:text-white"
                                     >
@@ -335,7 +345,7 @@ export function Navbar() {
                                         Messages
                                     </Link>
                                     <Link
-                                        to="/wallet"
+                                        to={walletPath}
                                         onClick={() => setMobileMenuOpen(false)}
                                         className="flex items-center gap-3 px-4 py-3 rounded-lg text-neutral-400 hover:bg-white/5 hover:text-white"
                                     >
