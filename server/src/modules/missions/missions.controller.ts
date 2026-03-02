@@ -173,6 +173,10 @@ export const applyToMission = async (req: Request, res: Response): Promise<void>
             sendError(res, 'Mission not found', 404);
             return;
         }
+        if (mission.initiatorId === uid) {
+            sendError(res, 'You cannot apply to your own mission', 400);
+            return;
+        }
         if (mission.status !== 'open') {
             sendError(res, 'Mission is not accepting applications', 400);
             return;
@@ -280,6 +284,10 @@ export const assignContributor = async (req: Request, res: Response): Promise<vo
         }
         if (!['open', 'matching'].includes(mission.status)) {
             sendError(res, 'Mission is not in a state to accept assignments', 400);
+            return;
+        }
+        if (mission.initiatorId === contributorId) {
+            sendError(res, 'You cannot assign yourself to your own mission', 400);
             return;
         }
         const assignment = await missionsService.assignContributor(id, contributorId, role);
