@@ -256,7 +256,7 @@ people/
 
    **Client** (`client/.env`):
    ```env
-   VITE_API_URL=http://localhost:5000/api/v1
+   VITE_API_URL=http://localhost:5001
    VITE_FIREBASE_API_KEY=your_firebase_api_key
    VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
    VITE_FIREBASE_PROJECT_ID=your_project_id
@@ -264,7 +264,7 @@ people/
 
    **Server** (`server/.env`):
    ```env
-   PORT=5000
+   PORT=5001
    FRONTEND_URL=http://localhost:5173
    
    # Firebase Admin
