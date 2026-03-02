@@ -83,6 +83,7 @@ echo "Running smoke checks against ${BASE_URL}"
 check "API health" "${BASE_URL}/api/health"
 check "Public missions" "${BASE_URL}/api/v1/missions"
 check "Public contributors" "${BASE_URL}/api/v1/contributors/public"
+check "Public user search" "${BASE_URL}/api/v1/search/users?role=contributor&limit=5"
 
 if [[ -n "$CLIENT_BASE_URL" ]]; then
   CLIENT_BASE_URL="${CLIENT_BASE_URL%/}"
@@ -112,6 +113,20 @@ check_status \
   '{"name":"Smoke Contact","email":"smoke-contact@example.com","subject":"Contact alias check","message":"This message validates the /api/v1/contact alias endpoint.","source":"post_deploy_smoke"}'
 
 check "Current user profile" "${BASE_URL}/api/v1/users/me" true
+check "Role capabilities" "${BASE_URL}/api/v1/users/me/role-capabilities" true
+check_status \
+  "Active role endpoint exists (auth required)" \
+  "${BASE_URL}/api/v1/users/me/active-role" \
+  "401,403" \
+  "PATCH" \
+  '{"role":"contributor"}'
+check_status \
+  "Admin scope summary endpoint reachable" \
+  "${BASE_URL}/api/v1/admin/me/scopes" \
+  "200,401,403" \
+  "GET" \
+  "" \
+  "true"
 check "My conversations" "${BASE_URL}/api/v1/conversations" true
 check "Wallet summary" "${BASE_URL}/api/v1/wallet/summary" true
 
