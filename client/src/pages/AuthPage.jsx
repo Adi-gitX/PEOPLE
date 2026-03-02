@@ -6,6 +6,7 @@ import { EmailOtpForm } from '../components/auth/EmailOtpForm';
 import { PublicLayout } from '../components/layout/PublicLayout';
 import { KeyRound, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
+import { getDefaultPathForRole } from '../lib/roleRouting';
 
 export default function AuthPage() {
     const [searchParams] = useSearchParams();
@@ -21,9 +22,7 @@ export default function AuthPage() {
 
     useEffect(() => {
         if (!isLoading && isAuthenticated && role && !isEmailLink) {
-            const dashboardPath = role === 'initiator'
-                ? '/dashboard/initiator'
-                : '/dashboard/contributor';
+            const dashboardPath = getDefaultPathForRole(role);
             navigate(dashboardPath, { replace: true });
         }
     }, [isAuthenticated, role, isLoading, navigate, isEmailLink]);
@@ -54,31 +53,38 @@ export default function AuthPage() {
                         </p>
                     </div>
 
-                    <div className="flex bg-zinc-900 rounded-lg p-1">
-                        <button
-                            onClick={() => setAuthMethod('magic')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'magic'
-                                ? 'bg-white text-black'
-                                : 'text-zinc-400 hover:text-white'
-                                }`}
-                        >
+                    {mode === 'login' ? (
+                        <div className="flex bg-zinc-900 rounded-lg p-1">
+                            <button
+                                onClick={() => setAuthMethod('magic')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'magic'
+                                    ? 'bg-white text-black'
+                                    : 'text-zinc-400 hover:text-white'
+                                    }`}
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                Magic Link
+                            </button>
+                            <button
+                                onClick={() => setAuthMethod('password')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'password'
+                                    ? 'bg-white text-black'
+                                    : 'text-zinc-400 hover:text-white'
+                                    }`}
+                            >
+                                <KeyRound className="w-4 h-4" />
+                                Password
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-white/10 bg-zinc-900 text-sm text-zinc-300">
                             <Sparkles className="w-4 h-4" />
-                            Magic Link
-                        </button>
-                        <button
-                            onClick={() => setAuthMethod('password')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${authMethod === 'password'
-                                ? 'bg-white text-black'
-                                : 'text-zinc-400 hover:text-white'
-                                }`}
-                        >
-                            <KeyRound className="w-4 h-4" />
-                            Password
-                        </button>
-                    </div>
+                            Email OTP (Magic Link) Signup
+                        </div>
+                    )}
 
                     <div>
-                        {authMethod === 'magic' ? (
+                        {mode === 'signup' || authMethod === 'magic' ? (
                             <EmailOtpForm mode={mode} />
                         ) : (
                             mode === 'login' ? <LoginForm /> : <SignupForm />
@@ -89,7 +95,13 @@ export default function AuthPage() {
                                 {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
                             </span>
                             <button
-                                onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+                                onClick={() => {
+                                    const nextMode = mode === 'login' ? 'signup' : 'login';
+                                    if (nextMode === 'signup') {
+                                        setAuthMethod('magic');
+                                    }
+                                    setMode(nextMode);
+                                }}
                                 className="font-medium text-white hover:text-white/80 transition-colors"
                             >
                                 {mode === 'login' ? 'Sign up' : 'Sign in'}
