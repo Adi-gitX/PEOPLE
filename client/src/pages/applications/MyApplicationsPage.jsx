@@ -109,7 +109,7 @@ export default function MyApplicationsPage() {
                         <p className="text-neutral-400 mt-1">Track the status of your mission applications</p>
                     </div>
                     <Link
-                        to="/explore"
+                        to="/dashboard/contributor/explore"
                         className="px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-neutral-200 transition-colors flex items-center gap-2"
                     >
                         Browse Missions <ArrowRight className="w-4 h-4" />
@@ -143,7 +143,7 @@ export default function MyApplicationsPage() {
                         <h3 className="text-xl font-bold text-white mb-2 tracking-tight">No Applications Yet</h3>
                         <p className="text-neutral-400 mb-8 max-w-sm mx-auto">Start exploring the marketplace to find your next mission and build your reputation.</p>
                         <Link
-                            to="/explore"
+                            to="/dashboard/contributor/explore"
                             className="px-6 py-3 bg-white text-black rounded-lg font-medium hover:bg-neutral-200 transition-colors inline-flex items-center gap-2"
                         >
                             Explore Missions <ArrowRight className="w-4 h-4" />
@@ -193,7 +193,7 @@ export default function MyApplicationsPage() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-3 mb-3">
                                                 <Link
-                                                    to={`/missions/${application.missionId}`}
+                                                    to={`/dashboard/contributor/missions/${application.missionId}`}
                                                     className="text-lg font-semibold text-white hover:text-blue-400 transition-colors truncate tracking-tight"
                                                 >
                                                     {application.missionTitle || 'Mission'}
@@ -226,7 +226,7 @@ export default function MyApplicationsPage() {
 
                                         <div className="flex items-center gap-3">
                                             <Link
-                                                to={`/missions/${application.missionId}`}
+                                                to={`/dashboard/contributor/missions/${application.missionId}`}
                                                 className="px-4 py-2 text-sm bg-white/[0.05] text-white border border-white/[0.08] rounded-lg hover:bg-white/[0.1] transition-colors font-medium"
                                             >
                                                 View Mission
