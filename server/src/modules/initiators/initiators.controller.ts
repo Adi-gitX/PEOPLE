@@ -15,10 +15,6 @@ export const getMyProfile = async (req: Request, res: Response): Promise<void> =
             sendError(res, 'User not found', 404);
             return;
         }
-        if (user.primaryRole !== 'initiator') {
-            sendError(res, 'User is not an initiator', 403);
-            return;
-        }
         sendSuccess(res, { user, profile });
     } catch {
         sendError(res, 'Failed to get initiator profile', 500);
