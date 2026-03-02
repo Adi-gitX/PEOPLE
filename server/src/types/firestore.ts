@@ -279,6 +279,11 @@ export interface Conversation extends FirestoreDocument {
     type: 'direct' | 'mission_team' | 'support';
     participants: string[]; // User IDs
     lastMessageAt?: Timestamp | Date;
+    lastMessage?: string;
+    moderationStatus?: 'normal' | 'locked';
+    moderationReason?: string;
+    moderatedBy?: string;
+    moderatedAt?: Timestamp | Date;
 }
 
 export interface Message extends FirestoreDocument {
@@ -301,6 +306,32 @@ export interface Message extends FirestoreDocument {
     isEdited: boolean;
     isDeleted: boolean;
     editedAt?: Timestamp | Date;
+    isModeratedHidden?: boolean;
+    moderationReason?: string;
+    moderatedBy?: string;
+    moderatedAt?: Timestamp | Date;
+}
+
+export interface AdminProfile extends FirestoreDocument {
+    userId: string;
+    adminType: 'super_admin' | 'support_admin' | 'ops_admin' | 'trust_safety';
+    scopes: string[];
+    isActive: boolean;
+    mfaRequired?: boolean;
+    mfaEnrolledAt?: Timestamp | Date | null;
+    lastMfaResetAt?: Timestamp | Date | null;
+    lastMfaResetBy?: string | null;
+}
+
+export interface AdminAuditLog extends FirestoreDocument {
+    actorId: string;
+    actorType: 'admin';
+    scope: string;
+    action: string;
+    resourceType: string;
+    resourceId?: string;
+    reason?: string;
+    metadata?: Record<string, unknown>;
 }
 
 // ═══════════════════════════════════════════════════════════════════
