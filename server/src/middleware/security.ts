@@ -2,6 +2,7 @@
 // Adds security headers and protections
 
 import { Request, Response, NextFunction } from 'express';
+import { randomBytes } from 'crypto';
 
 // Security headers middleware
 export const securityHeaders = (_req: Request, res: Response, next: NextFunction): void => {
@@ -76,8 +77,7 @@ export const validateCsrfToken = (sessionId: string, token: string): boolean => 
 export const generateSecureToken = (length: number = 32): string => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let token = '';
-    const randomValues = new Uint8Array(length);
-    require('crypto').randomFillSync(randomValues);
+    const randomValues = randomBytes(length);
     for (let i = 0; i < length; i++) {
         token += chars[randomValues[i] % chars.length];
     }
@@ -124,7 +124,7 @@ export const sanitizeObject = <T extends Record<string, any>>(obj: T): T => {
 
 // Middleware to sanitize request body
 export const sanitizeRequest = (req: Request, _res: Response, next: NextFunction): void => {
-    if (req.body && typeof req.body === 'object') {
+    if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
         req.body = sanitizeObject(req.body);
     }
 
