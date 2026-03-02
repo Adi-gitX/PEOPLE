@@ -89,14 +89,18 @@ const getConversationPreview = async (
         messagesRef.orderBy('createdAt', 'desc').limit(100).get(),
     ]);
 
-    const latestMessage = latestMessageSnapshot.empty
-        ? undefined
-        : (latestMessageSnapshot.docs[0].data() as Message).content;
+    const latestMessage = (() => {
+        if (latestMessageSnapshot.empty) return undefined;
+        const latest = latestMessageSnapshot.docs[0].data() as Message;
+        if (latest.isDeleted || latest.isModeratedHidden) return undefined;
+        return latest.content;
+    })();
 
     const unreadCount = recentMessagesSnapshot.docs.reduce((count, doc) => {
         const message = doc.data() as Message;
         if (message.senderId === userId) return count;
         if (message.isDeleted) return count;
+        if (message.isModeratedHidden) return count;
         return (message.readBy || []).includes(userId) ? count : count + 1;
     }, 0);
 
@@ -145,7 +149,7 @@ export const getConversationById = async (conversationId: string): Promise<Conve
 
 export const getMessages = async (
     conversationId: string,
-    options: { limit?: number; beforeId?: string } = {}
+    options: { limit?: number; beforeId?: string; viewerRole?: string } = {}
 ): Promise<Message[]> => {
     let query: FirebaseFirestore.Query = db
         .collection(CONVERSATIONS_COLLECTION)
@@ -160,7 +164,16 @@ export const getMessages = async (
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message)).reverse();
+    const isAdminViewer = options.viewerRole === 'admin';
+    const messages = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() } as Message))
+        .reverse();
+
+    if (isAdminViewer) {
+        return messages;
+    }
+
+    return messages.filter((message) => !message.isModeratedHidden);
 };
 
 export const sendMessage = async (
@@ -170,6 +183,16 @@ export const sendMessage = async (
     content: string,
     messageType: Message['messageType'] = 'text'
 ): Promise<Message> => {
+    const conversationDoc = await db.collection(CONVERSATIONS_COLLECTION).doc(conversationId).get();
+    if (!conversationDoc.exists) {
+        throw new Error('Conversation not found');
+    }
+
+    const conversation = conversationDoc.data() as Conversation;
+    if (conversation.moderationStatus === 'locked') {
+        throw new Error('Conversation is locked by admin moderation');
+    }
+
     const message: Omit<Message, 'id'> = {
         conversationId,
         senderId,
