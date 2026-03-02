@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { PublicLayout } from '../../components/layout/PublicLayout';
+import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Button } from '../../components/ui/Button';
 import { useMission, useSkills } from '../../hooks/useApi';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -16,6 +17,11 @@ export default function MissionDetailsPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { isAuthenticated, role } = useAuthStore();
+    const useDashboardLayout = isAuthenticated && (role === 'contributor' || role === 'initiator');
+    const Layout = useDashboardLayout ? DashboardLayout : PublicLayout;
+    const backPath = useDashboardLayout
+        ? (role === 'contributor' ? '/dashboard/contributor/explore' : '/dashboard/initiator')
+        : '/explore';
     const { data, loading, error } = useMission(id);
     const { skills: allSkills } = useSkills();
     const [applying, setApplying] = useState(false);
@@ -77,22 +83,22 @@ export default function MissionDetailsPage() {
 
     if (loading) {
         return (
-            <PublicLayout>
+            <Layout>
                 <div className="flex items-center justify-center pt-24">
                     <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
                 </div>
-            </PublicLayout>
+            </Layout>
         );
     }
 
 
     if (error || !mission) {
         return (
-            <PublicLayout>
+            <Layout>
                 <div className="pt-8 pb-20 px-6 max-w-[1400px] mx-auto">
-                    <Link to="/explore" className="inline-flex items-center text-sm text-neutral-500 hover:text-white mb-8 transition-colors">
+                    <Link to={backPath} className="inline-flex items-center text-sm text-neutral-500 hover:text-white mb-8 transition-colors">
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Marketplace
+                        Back
                     </Link>
 
                     <div className="p-8 rounded-xl border border-red-500/20 bg-red-500/10">
@@ -102,21 +108,21 @@ export default function MissionDetailsPage() {
                         </p>
                     </div>
                 </div>
-            </PublicLayout>
+            </Layout>
         );
     }
 
     return (
-        <PublicLayout>
+        <Layout>
             <div className="pt-8 pb-20 px-6 max-w-[1400px] mx-auto">
-                <Link to="/explore" className="inline-flex items-center text-sm text-neutral-500 hover:text-white mb-8 transition-colors">
+                <Link to={backPath} className="inline-flex items-center text-sm text-neutral-500 hover:text-white mb-8 transition-colors">
                     <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Marketplace
+                    Back
                 </Link>
 
                 {renderMissionContent(mission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role, resolvedSkills)}
             </div>
-        </PublicLayout>
+        </Layout>
     );
 }
 
