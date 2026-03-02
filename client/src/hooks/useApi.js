@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 
+const loggedNetworkEndpoints = new Set();
+
 /**
  * Generic hook for API fetching with loading/error states
  */
@@ -21,9 +23,19 @@ export const useApi = (endpoint, options = {}) => {
         try {
             const response = await api.get(endpoint);
             setData(response.data);
+            if (loggedNetworkEndpoints.has(endpoint)) {
+                loggedNetworkEndpoints.delete(endpoint);
+            }
         } catch (err) {
             setError(err.message);
-            console.error(`API Error (${endpoint}):`, err);
+            if (err?.name === 'NetworkError') {
+                if (!loggedNetworkEndpoints.has(endpoint)) {
+                    loggedNetworkEndpoints.add(endpoint);
+                    console.warn(`API network unavailable (${endpoint}):`, err.message);
+                }
+            } else {
+                console.error(`API Error (${endpoint}):`, err);
+            }
         } finally {
             setLoading(false);
         }
