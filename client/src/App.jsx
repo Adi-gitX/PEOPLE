@@ -22,6 +22,11 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminMissionsPage from './pages/admin/AdminMissionsPage';
 import AdminDisputesPage from './pages/admin/AdminDisputesPage';
+import AdminSupportPage from './pages/admin/AdminSupportPage';
+import AdminMessagesPage from './pages/admin/AdminMessagesPage';
+import AdminWithdrawalsPage from './pages/admin/AdminWithdrawalsPage';
+import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
+import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
 import WalletPage from './pages/WalletPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -36,6 +41,7 @@ import AboutPage from './pages/AboutPage';
 import BlogPage from './pages/BlogPage';
 import CareersPage from './pages/CareersPage';
 import { AdminGuard } from './components/auth/AdminGuard';
+import { AdminScopeGuard } from './components/auth/AdminScopeGuard';
 
 function App() {
   return (
@@ -156,17 +162,68 @@ function App() {
           } />
           <Route path="/admin/users" element={
             <AdminGuard>
-              <AdminUsersPage />
+              <AdminScopeGuard requiredScopes={['users.read']}>
+                <AdminUsersPage />
+              </AdminScopeGuard>
             </AdminGuard>
           } />
           <Route path="/admin/missions" element={
             <AdminGuard>
-              <AdminMissionsPage />
+              <AdminScopeGuard requiredScopes={['missions.read']}>
+                <AdminMissionsPage />
+              </AdminScopeGuard>
             </AdminGuard>
           } />
           <Route path="/admin/disputes" element={
             <AdminGuard>
-              <AdminDisputesPage />
+              <AdminScopeGuard requiredScopes={['disputes.read']}>
+                <AdminDisputesPage />
+              </AdminScopeGuard>
+            </AdminGuard>
+          } />
+          <Route path="/admin/support" element={
+            <AdminGuard>
+              <AdminScopeGuard requiredScopes={['support.read']}>
+                <AdminSupportPage />
+              </AdminScopeGuard>
+            </AdminGuard>
+          } />
+          <Route path="/admin/messages" element={
+            <AdminGuard>
+              <AdminScopeGuard requiredScopes={['messages.read']}>
+                <AdminMessagesPage />
+              </AdminScopeGuard>
+            </AdminGuard>
+          } />
+          <Route path="/admin/withdrawals" element={
+            <AdminGuard>
+              <AdminScopeGuard requiredScopes={['withdrawals.read']}>
+                <AdminWithdrawalsPage />
+              </AdminScopeGuard>
+            </AdminGuard>
+          } />
+          <Route path="/admin/payments" element={
+            <AdminGuard>
+              <AdminScopeGuard requiredScopes={['payments.read', 'escrow.read']}>
+                <AdminPaymentsPage />
+              </AdminScopeGuard>
+            </AdminGuard>
+          } />
+          <Route path="/admin/audit" element={
+            <AdminGuard>
+              <AdminScopeGuard requiredScopes={['audit.read']}>
+                <AdminAuditLogsPage />
+              </AdminScopeGuard>
+            </AdminGuard>
+          } />
+          <Route path="/admin/settings" element={
+            <AdminGuard>
+              <Navigate to="/admin" replace />
+            </AdminGuard>
+          } />
+          <Route path="/admin/*" element={
+            <AdminGuard>
+              <Navigate to="/admin" replace />
             </AdminGuard>
           } />
 
