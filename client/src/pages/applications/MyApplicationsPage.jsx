@@ -17,6 +17,7 @@ const STATUS_CONFIG = {
 export default function MyApplicationsPage() {
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [withdrawingApplicationId, setWithdrawingApplicationId] = useState('');
 
     const [verificationStatus, setVerificationStatus] = useState(null);
 
@@ -49,12 +50,16 @@ export default function MyApplicationsPage() {
     };
 
     const handleWithdraw = async (missionId, applicationId) => {
+        if (!window.confirm('Are you sure you want to withdraw this application?')) return;
+        setWithdrawingApplicationId(applicationId);
         try {
             await api.patch(`/api/v1/missions/${missionId}/applications/${applicationId}/withdraw`);
             toast.success('Application withdrawn');
             fetchApplications();
         } catch {
             toast.error('Failed to withdraw application');
+        } finally {
+            setWithdrawingApplicationId('');
         }
     };
 
@@ -229,9 +234,10 @@ export default function MyApplicationsPage() {
                                             {application.status === 'pending' && (
                                                 <button
                                                     onClick={() => handleWithdraw(application.missionId, application.id)}
+                                                    disabled={withdrawingApplicationId === application.id}
                                                     className="px-4 py-2 text-sm bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors font-medium"
                                                 >
-                                                    Withdraw
+                                                    {withdrawingApplicationId === application.id ? 'Withdrawing...' : 'Withdraw'}
                                                 </button>
                                             )}
                                         </div>
