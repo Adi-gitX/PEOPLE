@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthGuard, GuestGuard } from './components/auth/AuthGuard';
 import { useAuthStore } from './store/useAuthStore';
 import { getDefaultPathForRole } from './lib/roleRouting';
@@ -50,6 +50,27 @@ import { AdminScopeGuard } from './components/auth/AdminScopeGuard';
 function DashboardRoleRedirect() {
   const { role } = useAuthStore();
   return <Navigate to={getDefaultPathForRole(role)} replace />;
+}
+
+function RoleScopedPageRedirect({ suffix }) {
+  const { role } = useAuthStore();
+
+  if (role === 'initiator') {
+    return <Navigate to={`/dashboard/initiator/${suffix}`} replace />;
+  }
+
+  if (role === 'admin') {
+    if (suffix === 'messages') return <Navigate to="/admin/messages" replace />;
+    if (suffix === 'wallet') return <Navigate to="/admin/payments" replace />;
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <Navigate to={`/dashboard/contributor/${suffix}`} replace />;
+}
+
+function InitiatorMissionApplicationsRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/dashboard/initiator/missions/${id}/applications`} replace />;
 }
 
 function App() {
@@ -145,15 +166,27 @@ function App() {
           } />
 
 
-          <Route path="/missions/new" element={
+          <Route path="/dashboard/initiator/missions/new" element={
             <AuthGuard requireRole="initiator">
               <NewMissionPage />
             </AuthGuard>
           } />
 
-          <Route path="/missions/:id/applications" element={
+          <Route path="/missions/new" element={
+            <AuthGuard requireRole="initiator">
+              <Navigate to="/dashboard/initiator/missions/new" replace />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/initiator/missions/:id/applications" element={
             <AuthGuard requireRole="initiator">
               <MissionApplicationsPage />
+            </AuthGuard>
+          } />
+
+          <Route path="/missions/:id/applications" element={
+            <AuthGuard requireRole="initiator">
+              <InitiatorMissionApplicationsRedirect />
             </AuthGuard>
           } />
 
@@ -164,27 +197,69 @@ function App() {
             </AuthGuard>
           } />
 
-          <Route path="/applications" element={
+          <Route path="/dashboard/contributor/applications" element={
             <AuthGuard requireRole="contributor">
               <MyApplicationsPage />
             </AuthGuard>
           } />
 
+          <Route path="/applications" element={
+            <AuthGuard requireRole="contributor">
+              <Navigate to="/dashboard/contributor/applications" replace />
+            </AuthGuard>
+          } />
+
           <Route path="/wallet" element={
             <AuthGuard>
-              <WalletPage />
+              <RoleScopedPageRedirect suffix="wallet" />
             </AuthGuard>
           } />
 
           <Route path="/notifications" element={
             <AuthGuard>
-              <NotificationsPage />
+              <RoleScopedPageRedirect suffix="notifications" />
             </AuthGuard>
           } />
 
           <Route path="/messages" element={
             <AuthGuard>
+              <RoleScopedPageRedirect suffix="messages" />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/contributor/messages" element={
+            <AuthGuard requireRole="contributor">
               <MessagesPage />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/initiator/messages" element={
+            <AuthGuard requireRole="initiator">
+              <MessagesPage />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/contributor/notifications" element={
+            <AuthGuard requireRole="contributor">
+              <NotificationsPage />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/initiator/notifications" element={
+            <AuthGuard requireRole="initiator">
+              <NotificationsPage />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/contributor/wallet" element={
+            <AuthGuard requireRole="contributor">
+              <WalletPage />
+            </AuthGuard>
+          } />
+
+          <Route path="/dashboard/initiator/wallet" element={
+            <AuthGuard requireRole="initiator">
+              <WalletPage />
             </AuthGuard>
           } />
 
