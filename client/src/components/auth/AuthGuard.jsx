@@ -1,11 +1,18 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useEffect, useState } from 'react';
+import { getDefaultPathForRole } from '../../lib/roleRouting';
+import { useRoleCapabilities } from '../../hooks/useApi';
 
 export const AuthGuard = ({ children, requireRole = null }) => {
-    const { isAuthenticated, isLoading, role, refreshProfile } = useAuthStore();
+    const { isAuthenticated, isLoading, role, user, refreshProfile } = useAuthStore();
     const location = useLocation();
     const [isChecking, setIsChecking] = useState(true);
+    const { data: capabilityData, loading: capabilityLoading } = useRoleCapabilities({
+        immediate: Boolean(isAuthenticated && !isLoading),
+        deps: [user?.uid, role, requireRole],
+        resetOnFetch: true,
+    });
 
     useEffect(() => {
         const checkRole = async () => {
@@ -39,7 +46,34 @@ export const AuthGuard = ({ children, requireRole = null }) => {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
+    const availableRoles = Array.isArray(capabilityData?.availableRoles) && capabilityData.availableRoles.length > 0
+        ? capabilityData.availableRoles
+        : role
+            ? [role]
+            : [];
+    const hasRequiredRoleCapability = requireRole ? availableRoles.includes(requireRole) : true;
+    const requiresCapabilityResolution = Boolean(
+        requireRole &&
+        (role !== requireRole || !role) &&
+        capabilityLoading
+    );
+
+    if (requiresCapabilityResolution) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-black">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
+                    <p className="text-zinc-500 text-sm">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
     if (requireRole && role !== requireRole) {
+        if (hasRequiredRoleCapability) {
+            return children;
+        }
+
         if (!role) {
             return (
                 <div className="min-h-screen flex items-center justify-center bg-black text-white p-4">
@@ -67,9 +101,7 @@ export const AuthGuard = ({ children, requireRole = null }) => {
             );
         }
 
-        const redirectPath = role === 'initiator'
-            ? '/dashboard/initiator'
-            : '/dashboard/contributor';
+        const redirectPath = getDefaultPathForRole(role);
         return <Navigate to={redirectPath} replace />;
     }
 
@@ -88,9 +120,7 @@ export const GuestGuard = ({ children }) => {
     }
 
     if (isAuthenticated && role) {
-        const redirectPath = role === 'initiator'
-            ? '/dashboard/initiator'
-            : '/dashboard/contributor';
+        const redirectPath = getDefaultPathForRole(role);
         return <Navigate to={redirectPath} replace />;
     }
 
