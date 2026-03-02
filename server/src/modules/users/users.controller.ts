@@ -16,6 +16,10 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
             return;
         }
         const { email, fullName, role } = req.body;
+        if (role === 'admin') {
+            sendError(res, 'Admin role cannot be assigned via public registration', 403);
+            return;
+        }
         const result = await usersService.createUser(uid, { email, fullName, role });
         sendCreated(res, { message: 'User registered successfully', user: result.user, profile: result.profile });
     } catch {
