@@ -26,6 +26,8 @@ const PRIORITY_COLORS = {
 export default function NotificationsPage() {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [markingAll, setMarkingAll] = useState(false);
+    const [actioningId, setActioningId] = useState('');
 
     useEffect(() => {
         fetchNotifications();
@@ -44,6 +46,7 @@ export default function NotificationsPage() {
     };
 
     const handleMarkAsRead = async (id) => {
+        setActioningId(`${id}:read`);
         try {
             await api.patch(`/api/v1/notifications/${id}/read`);
             setNotifications(prev =>
@@ -51,26 +54,35 @@ export default function NotificationsPage() {
             );
         } catch {
             toast.error('Failed to mark as read');
+        } finally {
+            setActioningId('');
         }
     };
 
     const handleMarkAllAsRead = async () => {
+        setMarkingAll(true);
         try {
             await api.post('/api/v1/notifications/read-all');
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
             toast.success('All notifications marked as read');
         } catch {
             toast.error('Failed to mark all as read');
+        } finally {
+            setMarkingAll(false);
         }
     };
 
     const handleDelete = async (id) => {
+        if (!window.confirm('Delete this notification?')) return;
+        setActioningId(`${id}:delete`);
         try {
             await api.delete(`/api/v1/notifications/${id}`);
             setNotifications(prev => prev.filter(n => n.id !== id));
             toast.success('Notification deleted');
         } catch {
             toast.error('Failed to delete notification');
+        } finally {
+            setActioningId('');
         }
     };
 
@@ -121,9 +133,10 @@ export default function NotificationsPage() {
                     {unreadCount > 0 && (
                         <button
                             onClick={handleMarkAllAsRead}
+                            disabled={markingAll}
                             className="px-4 py-2 bg-white/[0.05] text-white border border-white/[0.08] rounded-lg font-medium hover:bg-white/[0.1] transition-colors flex items-center gap-2"
                         >
-                            <CheckCheck className="w-4 h-4" /> Mark all read
+                            <CheckCheck className="w-4 h-4" /> {markingAll ? 'Marking...' : 'Mark all read'}
                         </button>
                     )}
                 </div>
@@ -184,6 +197,7 @@ export default function NotificationsPage() {
                                                     {!notification.isRead && (
                                                         <button
                                                             onClick={() => handleMarkAsRead(notification.id)}
+                                                            disabled={actioningId === `${notification.id}:read` || actioningId === `${notification.id}:delete`}
                                                             className="p-1.5 text-neutral-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                                                             title="Mark as read"
                                                         >
@@ -192,6 +206,7 @@ export default function NotificationsPage() {
                                                     )}
                                                     <button
                                                         onClick={() => handleDelete(notification.id)}
+                                                        disabled={actioningId === `${notification.id}:delete` || actioningId === `${notification.id}:read`}
                                                         className="p-1.5 text-neutral-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                                                         title="Delete"
                                                     >
