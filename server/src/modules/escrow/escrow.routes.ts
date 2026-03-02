@@ -23,6 +23,12 @@ const fundEscrowSchema = z.object({
     paymentMethodId: z.string().optional(),
 });
 
+const createFundingIntentSchema = z.object({
+    amount: z.number().min(1).optional(),
+    currency: z.string().min(3).max(3).optional(),
+    provider: z.enum(['stripe', 'razorpay']).optional(),
+});
+
 const releaseFundsSchema = z.object({
     contributorId: z.string().min(1),
     amount: z.number().min(1),
@@ -59,6 +65,41 @@ router.get(
     '/mission/:missionId',
     requireAuth,
     escrowController.getEscrowByMission
+);
+
+/**
+ * @route   POST /api/v1/escrow/:missionId/fund-intent
+ * @desc    Create funding intent/order for escrow
+ * @access  Private (Initiator/Admin)
+ */
+router.post(
+    '/:missionId/fund-intent',
+    requireAuth,
+    requireRole(['initiator', 'admin']),
+    validate(createFundingIntentSchema),
+    escrowController.createFundingIntent
+);
+
+/**
+ * @route   GET /api/v1/escrow/:missionId/status
+ * @desc    Get normalized mission escrow/payment status
+ * @access  Private
+ */
+router.get(
+    '/:missionId/status',
+    requireAuth,
+    escrowController.getMissionEscrowStatus
+);
+
+/**
+ * @route   GET /api/v1/escrow/my-transactions
+ * @desc    Get transactions for current user
+ * @access  Private
+ */
+router.get(
+    '/my-transactions',
+    requireAuth,
+    escrowController.getMyTransactions
 );
 
 /**
@@ -131,17 +172,6 @@ router.get(
     '/transactions/:missionId',
     requireAuth,
     escrowController.getTransactionsByMission
-);
-
-/**
- * @route   GET /api/v1/escrow/my-transactions
- * @desc    Get transactions for current user
- * @access  Private
- */
-router.get(
-    '/my-transactions',
-    requireAuth,
-    escrowController.getMyTransactions
 );
 
 export default router;
