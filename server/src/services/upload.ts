@@ -22,6 +22,7 @@ export interface UploadOptions {
 
 const DEFAULT_MAX_SIZE = 5 * 1024 * 1024;
 const DEFAULT_ALLOWED_TYPES: AllowedMimeType[] = ['image/jpeg', 'image/png', 'image/webp'];
+let cloudinaryClient: any | null = null;
 
 const isCloudinaryConfigured = () => {
     return !!(
@@ -29,6 +30,20 @@ const isCloudinaryConfigured = () => {
         process.env.CLOUDINARY_API_KEY &&
         process.env.CLOUDINARY_API_SECRET
     );
+};
+
+const getCloudinaryClient = async (): Promise<any> => {
+    if (!isCloudinaryConfigured()) return null;
+    if (cloudinaryClient) return cloudinaryClient;
+
+    const cloudinaryModule = await import('cloudinary');
+    cloudinaryClient = cloudinaryModule.v2;
+    cloudinaryClient.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+    return cloudinaryClient;
 };
 
 export const validateFile = (
@@ -55,14 +70,10 @@ export const uploadImage = async (
 ): Promise<UploadResult> => {
     if (isCloudinaryConfigured()) {
         try {
-            const cloudinaryModule = require('cloudinary');
-            const cloudinary = cloudinaryModule.v2;
-
-            cloudinary.config({
-                cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-                api_key: process.env.CLOUDINARY_API_KEY,
-                api_secret: process.env.CLOUDINARY_API_SECRET,
-            });
+            const cloudinary = await getCloudinaryClient();
+            if (!cloudinary) {
+                throw new Error('Cloudinary is not configured');
+            }
 
             const uploadOptions: Record<string, unknown> = {
                 folder: options.folder || 'people-uploads',
@@ -110,13 +121,10 @@ export const uploadImage = async (
 export const deleteImage = async (publicId: string): Promise<boolean> => {
     if (isCloudinaryConfigured()) {
         try {
-            const cloudinaryModule = require('cloudinary');
-            const cloudinary = cloudinaryModule.v2;
-            cloudinary.config({
-                cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-                api_key: process.env.CLOUDINARY_API_KEY,
-                api_secret: process.env.CLOUDINARY_API_SECRET,
-            });
+            const cloudinary = await getCloudinaryClient();
+            if (!cloudinary) {
+                return false;
+            }
             await cloudinary.uploader.destroy(publicId);
             return true;
         } catch {
