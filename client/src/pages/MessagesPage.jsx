@@ -9,6 +9,7 @@ import {
     findConversationById,
     getOtherParticipantInitial,
     getOtherParticipantName,
+    getOtherParticipantProfile,
 } from './messages/messagesUtils';
 import {
     MessageCircle,
@@ -25,6 +26,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SkeletonConversationItem, SkeletonMessage } from '../components/ui/Skeleton';
+
+const UNSUPPORTED_CHAT_ACTION_NOTE = 'Available soon. PEOPLE v1 supports secure text chat only.';
 
 export default function MessagesPage() {
     const location = useLocation();
@@ -156,7 +159,13 @@ export default function MessagesPage() {
                     <div className="p-4 border-b border-white/[0.08] bg-black/20">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-bold text-white tracking-tight">Messages</h2>
-                            <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-zinc-400 hover:text-white">
+                            <button
+                                type="button"
+                                disabled
+                                title={UNSUPPORTED_CHAT_ACTION_NOTE}
+                                aria-label="More actions (coming soon)"
+                                className="p-2 rounded-full transition-colors text-zinc-500 cursor-not-allowed opacity-60"
+                            >
                                 <MoreVertical className="w-5 h-5" />
                             </button>
                         </div>
@@ -193,33 +202,43 @@ export default function MessagesPage() {
                                         : 'text-zinc-400 hover:bg-white/[0.03] hover:text-white'
                                         }`}
                                 >
-                                    <div className="flex items-center gap-3 relative z-10">
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${selectedConversation?.id === conversation.id ? 'bg-zinc-200 border-zinc-300' : 'bg-zinc-800 border-white/10'
-                                            }`}>
-                                            <User className={`w-5 h-5 ${selectedConversation?.id === conversation.id ? 'text-zinc-600' : 'text-zinc-400'
-                                                }`} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between mb-0.5">
-                                                <p className="font-semibold truncate">{getOtherParticipantName(conversation, user?.uid)}</p>
-                                                {conversation.lastMessageAt && (
-                                                    <span className={`text-[10px] ${selectedConversation?.id === conversation.id ? 'text-zinc-500' : 'text-zinc-600'
+                                    {(() => {
+                                        const profile = getOtherParticipantProfile(conversation, user?.uid);
+                                        const avatarUrl = profile?.avatarUrl;
+                                        return (
+                                            <div className="flex items-center gap-3 relative z-10">
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center border overflow-hidden ${selectedConversation?.id === conversation.id ? 'bg-zinc-200 border-zinc-300' : 'bg-zinc-800 border-white/10'
+                                                    }`}>
+                                                    {avatarUrl ? (
+                                                        <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <User className={`w-5 h-5 ${selectedConversation?.id === conversation.id ? 'text-zinc-600' : 'text-zinc-400'
+                                                            }`} />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between mb-0.5">
+                                                        <p className="font-semibold truncate">{getOtherParticipantName(conversation, user?.uid)}</p>
+                                                        {conversation.lastMessageAt && (
+                                                            <span className={`text-[10px] ${selectedConversation?.id === conversation.id ? 'text-zinc-500' : 'text-zinc-600'
+                                                                }`}>
+                                                                {new Date(conversation.lastMessageAt).toLocaleDateString()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className={`text-xs truncate ${selectedConversation?.id === conversation.id ? 'text-zinc-600' : 'text-zinc-500 group-hover:text-zinc-400'
                                                         }`}>
-                                                        {new Date(conversation.lastMessageAt).toLocaleDateString()}
-                                                    </span>
+                                                        {conversation.lastMessage || 'Start a conversation'}
+                                                    </p>
+                                                </div>
+                                                {conversation.unreadCount > 0 && selectedConversation?.id !== conversation.id && (
+                                                    <div className="min-w-5 h-5 px-1 rounded-full bg-white text-black text-[10px] font-bold flex items-center justify-center">
+                                                        {conversation.unreadCount}
+                                                    </div>
                                                 )}
                                             </div>
-                                            <p className={`text-xs truncate ${selectedConversation?.id === conversation.id ? 'text-zinc-600' : 'text-zinc-500 group-hover:text-zinc-400'
-                                                }`}>
-                                                {conversation.lastMessage || 'Start a conversation'}
-                                            </p>
-                                        </div>
-                                        {conversation.unreadCount > 0 && selectedConversation?.id !== conversation.id && (
-                                            <div className="min-w-5 h-5 px-1 rounded-full bg-white text-black text-[10px] font-bold flex items-center justify-center">
-                                                {conversation.unreadCount}
-                                            </div>
-                                        )}
-                                    </div>
+                                        );
+                                    })()}
 
                                     {/* Active Indicator Strip */}
                                     {selectedConversation?.id === conversation.id && (
@@ -244,9 +263,19 @@ export default function MessagesPage() {
                                     >
                                         <ArrowLeft className="w-5 h-5" />
                                     </button>
-                                    <div className="w-10 h-10 bg-gradient-to-br from-zinc-700 to-zinc-900 rounded-full flex items-center justify-center border border-white/10 shadow-inner">
-                                        <User className="w-5 h-5 text-white" />
-                                    </div>
+                                    {(() => {
+                                        const profile = getOtherParticipantProfile(selectedConversation, user?.uid);
+                                        const avatarUrl = profile?.avatarUrl;
+                                        return (
+                                            <div className="w-10 h-10 bg-gradient-to-br from-zinc-700 to-zinc-900 rounded-full flex items-center justify-center border border-white/10 shadow-inner overflow-hidden">
+                                                {avatarUrl ? (
+                                                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <User className="w-5 h-5 text-white" />
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                     <div>
                                         <h3 className="font-bold text-white text-lg leading-tight">
                                             {getOtherParticipantName(selectedConversation, user?.uid)}
@@ -258,14 +287,29 @@ export default function MessagesPage() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <button className="p-2.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
+                                    <button
+                                        type="button"
+                                        disabled
+                                        title={UNSUPPORTED_CHAT_ACTION_NOTE}
+                                        className="p-2.5 rounded-full text-zinc-500 cursor-not-allowed opacity-60"
+                                    >
                                         <Phone className="w-5 h-5" />
                                     </button>
-                                    <button className="p-2.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
+                                    <button
+                                        type="button"
+                                        disabled
+                                        title={UNSUPPORTED_CHAT_ACTION_NOTE}
+                                        className="p-2.5 rounded-full text-zinc-500 cursor-not-allowed opacity-60"
+                                    >
                                         <Video className="w-5 h-5" />
                                     </button>
                                     <div className="w-px h-6 bg-white/10 mx-1"></div>
-                                    <button className="p-2.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
+                                    <button
+                                        type="button"
+                                        disabled
+                                        title={UNSUPPORTED_CHAT_ACTION_NOTE}
+                                        className="p-2.5 rounded-full text-zinc-500 cursor-not-allowed opacity-60"
+                                    >
                                         <MoreVertical className="w-5 h-5" />
                                     </button>
                                 </div>
@@ -310,12 +354,25 @@ export default function MessagesPage() {
 
                             {/* Input Area */}
                             <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/[0.08]">
+                                <p className="text-[11px] text-zinc-500 mb-2 px-2">
+                                    Calls, attachments, and emoji reactions are not available in v1 text chat yet.
+                                </p>
                                 <form onSubmit={handleSendMessage} className="relative flex items-end gap-2 bg-zinc-900/50 border border-white/10 rounded-2xl p-2 focus-within:ring-1 focus-within:ring-white/20 transition-all shadow-inner">
                                     <div className="flex items-center gap-1 pb-2 pl-2">
-                                        <button type="button" className="p-2 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-white/5">
+                                        <button
+                                            type="button"
+                                            disabled
+                                            title={UNSUPPORTED_CHAT_ACTION_NOTE}
+                                            className="p-2 text-zinc-500 rounded-full cursor-not-allowed opacity-60"
+                                        >
                                             <Paperclip className="w-5 h-5" />
                                         </button>
-                                        <button type="button" className="p-2 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-white/5">
+                                        <button
+                                            type="button"
+                                            disabled
+                                            title={UNSUPPORTED_CHAT_ACTION_NOTE}
+                                            className="p-2 text-zinc-500 rounded-full cursor-not-allowed opacity-60"
+                                        >
                                             <ImageIcon className="w-5 h-5" />
                                         </button>
                                     </div>
@@ -328,7 +385,12 @@ export default function MessagesPage() {
                                         className="flex-1 bg-transparent border-none text-white placeholder:text-zinc-500 focus:ring-0 p-3 max-h-32 min-h-[48px]"
                                     />
                                     <div className="flex items-center gap-1 pb-1 pr-1">
-                                        <button type="button" className="p-2 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-white/5 mr-1">
+                                        <button
+                                            type="button"
+                                            disabled
+                                            title={UNSUPPORTED_CHAT_ACTION_NOTE}
+                                            className="p-2 text-zinc-500 rounded-full cursor-not-allowed opacity-60 mr-1"
+                                        >
                                             <Smile className="w-5 h-5" />
                                         </button>
                                         <button
