@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "check:system": "node scripts/system-check.mjs"
+    "check:system": "node scripts/system-check.mjs",
+    "check:routes": "node ../scripts/validate-routes.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
