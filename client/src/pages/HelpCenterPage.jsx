@@ -32,6 +32,8 @@ const CATEGORIES = [
 
 export default function HelpCenterPage() {
     const [search, setSearch] = useState('');
+    const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim();
+    const articleNotice = 'Knowledge-base article pages are being published. Use Contact Form for immediate support.';
 
     return (
         <PublicLayout>
@@ -69,7 +71,12 @@ export default function HelpCenterPage() {
                             <ul>
                                 {cat.articles.map((article, idx) => (
                                     <li key={idx}>
-                                        <button className="w-full flex items-center justify-between p-4 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors text-left">
+                                        <button
+                                            type="button"
+                                            disabled
+                                            title={articleNotice}
+                                            className="w-full flex items-center justify-between p-4 text-sm text-zinc-500 cursor-not-allowed text-left"
+                                        >
                                             {article}
                                             <ChevronRight className="w-4 h-4" />
                                         </button>
@@ -79,19 +86,30 @@ export default function HelpCenterPage() {
                         </div>
                     ))}
                 </div>
+                <p className="text-xs text-zinc-500 mb-12 text-center">
+                    Knowledge-base articles are being rolled out. Use the contact form for active support.
+                </p>
 
                 {/* Contact */}
                 <div className="grid md:grid-cols-3 gap-4">
                     <Link to="/contact" className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors text-center">
                         <MessageCircle className="w-6 h-6 text-white mx-auto mb-3" />
-                        <div className="font-medium mb-1">Chat</div>
-                        <div className="text-sm text-zinc-500">Get instant help</div>
+                        <div className="font-medium mb-1">Contact Form</div>
+                        <div className="text-sm text-zinc-500">Create a support ticket</div>
                     </Link>
-                    <a href="mailto:support@people.dev" className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors text-center">
-                        <Mail className="w-6 h-6 text-white mx-auto mb-3" />
-                        <div className="font-medium mb-1">Email</div>
-                        <div className="text-sm text-zinc-500">24hr response</div>
-                    </a>
+                    {supportEmail ? (
+                        <a href={`mailto:${supportEmail}`} className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors text-center">
+                            <Mail className="w-6 h-6 text-white mx-auto mb-3" />
+                            <div className="font-medium mb-1">Email</div>
+                            <div className="text-sm text-zinc-500">{supportEmail}</div>
+                        </a>
+                    ) : (
+                        <Link to="/contact" className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors text-center">
+                            <Mail className="w-6 h-6 text-white mx-auto mb-3" />
+                            <div className="font-medium mb-1">Email</div>
+                            <div className="text-sm text-zinc-500">Use contact form</div>
+                        </Link>
+                    )}
                     <Link to="/faq" className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors text-center">
                         <Book className="w-6 h-6 text-white mx-auto mb-3" />
                         <div className="font-medium mb-1">FAQ</div>
