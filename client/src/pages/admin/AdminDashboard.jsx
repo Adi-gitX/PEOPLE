@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { api } from '../../lib/api';
-import { Users, Briefcase, DollarSign, AlertTriangle, ArrowUpRight, TrendingUp, Activity, LifeBuoy, MessageSquare, Wallet, FileClock } from 'lucide-react';
+import { Users, Briefcase, DollarSign, AlertTriangle, ArrowUpRight, TrendingUp, Activity, LifeBuoy, MessageSquare, Wallet, FileClock, UserCog, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function AdminDashboard() {
@@ -201,6 +201,36 @@ export default function AdminDashboard() {
                             <p className="text-sm text-neutral-500">Review all sensitive admin actions</p>
                         </Link>
                     )}
+
+                    {hasScope(['admins.manage']) && (
+                        <Link
+                            to="/admin/admins"
+                            className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 hover:border-white/[0.15] transition-all group"
+                        >
+                            <div className="flex items-center justify-between mb-5">
+                                <div className="p-3 bg-rose-500/10 rounded-xl border border-rose-500/20">
+                                    <UserCog className="w-6 h-6 text-rose-300" />
+                                </div>
+                                <ArrowUpRight className="w-5 h-5 text-neutral-600 group-hover:text-white transition-colors" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-1 tracking-tight">Admin Governance</h3>
+                            <p className="text-sm text-neutral-500">Promote, scope, and secure admin operators</p>
+                        </Link>
+                    )}
+
+                    <Link
+                        to="/admin/security"
+                        className="bg-[#0A0A0A] border border-white/[0.08] rounded-xl p-6 hover:border-white/[0.15] transition-all group"
+                    >
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="p-3 bg-lime-500/10 rounded-xl border border-lime-500/20">
+                                <ShieldCheck className="w-6 h-6 text-lime-300" />
+                            </div>
+                            <ArrowUpRight className="w-5 h-5 text-neutral-600 group-hover:text-white transition-colors" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-1 tracking-tight">Admin Security</h3>
+                        <p className="text-sm text-neutral-500">Enroll TOTP MFA and verify session security posture</p>
+                    </Link>
                 </div>
 
                 {stats?.totalEarnings > 0 && (
