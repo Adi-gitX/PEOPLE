@@ -23,7 +23,7 @@ const PRIORITY_CONFIG = {
 
 const POLLING_INTERVAL_MS = 30000;
 const MAX_CONSECUTIVE_NETWORK_FAILURES = 3;
-const NETWORK_ERROR_REGEX = /(failed to fetch|fetch failed|networkerror|err_connection_refused)/i;
+const NETWORK_ERROR_REGEX = /(failed to fetch|fetch failed|network request failed|networkerror|err_connection_refused)/i;
 
 const isNetworkFailure = (error) => {
     if (!(error instanceof Error)) return false;
