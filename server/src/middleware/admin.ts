@@ -104,6 +104,15 @@ const getTokenSecondFactor = (decodedToken: DecodedIdToken | undefined): string 
         : null;
 };
 
+const getMfaEnrollmentState = async (uid: string): Promise<boolean> => {
+    try {
+        const userRecord = await auth.getUser(uid);
+        return (userRecord.multiFactor?.enrolledFactors?.length || 0) > 0;
+    } catch {
+        return false;
+    }
+};
+
 const hasScope = (access: AdminAccessContext, scope: AdminScope): boolean => {
     if (access.adminType === 'super_admin') return true;
     return access.scopes.includes(scope);
@@ -155,13 +164,7 @@ export const resolveAdminAccess = async (
         }
 
         const fallbackFactor = getTokenSecondFactor(decodedToken);
-        let fallbackMfaEnrolled = false;
-        try {
-            const userRecord = await auth.getUser(uid);
-            fallbackMfaEnrolled = (userRecord.multiFactor?.enrolledFactors?.length || 0) > 0;
-        } catch {
-            fallbackMfaEnrolled = false;
-        }
+        const fallbackMfaEnrolled = await getMfaEnrollmentState(uid);
 
         return {
             userId: uid,
@@ -194,13 +197,7 @@ export const resolveAdminAccess = async (
 
     const tokenSecondFactor = getTokenSecondFactor(decodedToken);
 
-    let mfaEnrolled = false;
-    try {
-        const userRecord = await auth.getUser(uid);
-        mfaEnrolled = (userRecord.multiFactor?.enrolledFactors?.length || 0) > 0;
-    } catch {
-        mfaEnrolled = false;
-    }
+    const mfaEnrolled = await getMfaEnrollmentState(uid);
 
     return {
         userId: uid,
