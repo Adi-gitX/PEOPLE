@@ -14,7 +14,7 @@ const router = Router();
 // ─── Validation Schemas ───
 const withdrawalSchema = z.object({
     amount: z.number().min(10, 'Minimum withdrawal is $10'),
-    payoutMethod: z.enum(['bank_transfer', 'paypal', 'stripe', 'payoneer']),
+    payoutMethod: z.enum(['bank_transfer']).default('bank_transfer'),
     payoutDetails: z.record(z.string()),
 });
 
@@ -57,7 +57,20 @@ router.get('/transactions', requireAuth, walletController.getTransactions);
 router.post(
     '/withdraw',
     requireAuth,
-    requireRole(['contributor', 'admin']),
+    requireRole(['contributor']),
+    validate(withdrawalSchema),
+    walletController.requestWithdrawal
+);
+
+/**
+ * @route   POST /api/v1/wallet/withdrawals
+ * @desc    Request withdrawal (canonical route)
+ * @access  Private (Contributor/Admin)
+ */
+router.post(
+    '/withdrawals',
+    requireAuth,
+    requireRole(['contributor']),
     validate(withdrawalSchema),
     walletController.requestWithdrawal
 );
