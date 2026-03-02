@@ -143,6 +143,20 @@ export const messagingLimiter = createRateLimiter('messaging', {
     message: 'Too many message actions, please slow down',
 });
 
+// Limiter for support ticket creation
+export const supportLimiter = createRateLimiter('support', {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,                  // 10 support submissions per 15 minutes per IP
+    message: 'Too many support requests, please wait before submitting another ticket',
+});
+
+// Limiter for sensitive admin mutation operations
+export const adminMutationLimiter = createRateLimiter('adminMutation', {
+    windowMs: 10 * 60 * 1000, // 10 minutes
+    max: 120,                 // generous but protective for moderation/bulk ops
+    message: 'Too many admin mutation requests, please try again shortly',
+});
+
 // Get rate limit stats (for admin/monitoring)
 export const getRateLimitStats = () => {
     const stats: Record<string, { activeKeys: number; totalRequests: number }> = {};
