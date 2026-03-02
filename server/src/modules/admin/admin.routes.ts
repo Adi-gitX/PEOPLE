@@ -2,21 +2,26 @@ import { Router, Request, Response, NextFunction } from 'express';
 import * as adminController from './admin.controller.js';
 import * as supportController from '../support/support.controller.js';
 import { requireAuth } from '../../middleware/auth.js';
-import { requireAdmin, requireAdminScope } from '../../middleware/admin.js';
+import { requireAdmin, requireAdminMfa, requireAdminScope, requireSuperAdmin } from '../../middleware/admin.js';
 import { adminMutationLimiter } from '../../middleware/rateLimit.js';
 import { env } from '../../config/env.js';
 import { validate } from '../../middleware/validate.js';
 import {
+    adminMfaResetSchema,
     adminAuditLogsQuerySchema,
     adminConversationModerationSchema,
     adminEscrowAccountsQuerySchema,
     adminMessageModerationSchema,
     adminMessagesConversationQuerySchema,
     adminMessagesQuerySchema,
+    adminVerifyUserSchema,
     adminPaymentsIntentQuerySchema,
+    adminUsersQuerySchema,
     adminWithdrawalsQuerySchema,
+    createAdminUserSchema,
     supportReplySchema,
     supportTicketsQuerySchema,
+    updateAdminUserSchema,
     updateSupportTicketSchema,
 } from '../../schemas/index.js';
 import { z } from 'zod';
@@ -38,8 +43,43 @@ const requireFeature = (enabled: boolean) => {
 
 router.use(requireAuth);
 router.use(requireAdmin);
+router.use(requireAdminMfa({
+    allowPaths: ['/me/scopes', '/me/security'],
+}));
 
 router.get('/me/scopes', adminController.getMyAdminScopes);
+router.get('/me/security', adminController.getMyAdminSecurity);
+
+router.get(
+    '/admin-users',
+    requireSuperAdmin,
+    validate(adminUsersQuerySchema, 'query'),
+    adminController.getAdminUsers
+);
+
+router.post(
+    '/admin-users',
+    requireSuperAdmin,
+    adminMutationLimiter,
+    validate(createAdminUserSchema),
+    adminController.createAdminUser
+);
+
+router.patch(
+    '/admin-users/:uid',
+    requireSuperAdmin,
+    adminMutationLimiter,
+    validate(updateAdminUserSchema),
+    adminController.patchAdminUser
+);
+
+router.post(
+    '/admin-users/:uid/mfa-reset',
+    requireSuperAdmin,
+    adminMutationLimiter,
+    validate(adminMfaResetSchema),
+    adminController.resetAdminUserMfa
+);
 
 router.get('/stats', requireAdminScope(['users.read']), adminController.getPlatformStats);
 
@@ -59,6 +99,7 @@ router.patch(
     '/users/:userId/verify',
     requireAdminScope(['users.write']),
     adminMutationLimiter,
+    validate(adminVerifyUserSchema),
     adminController.verifyUser
 );
 
