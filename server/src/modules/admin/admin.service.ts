@@ -31,6 +31,11 @@ const ADMIN_PROFILES_COLLECTION = 'adminProfiles';
 const ADMIN_AUDIT_LOGS_COLLECTION = 'adminAuditLogs';
 
 type DateLike = Date | FirebaseFirestore.Timestamp | string | undefined;
+const DEFAULT_SCOPES_BY_ADMIN_TYPE: Record<Exclude<AdminType, 'super_admin'>, AdminScope[]> = {
+    support_admin: ['support.read', 'support.write', 'support.reply'],
+    ops_admin: ['withdrawals.read', 'withdrawals.write', 'payments.read', 'escrow.read', 'users.read'],
+    trust_safety: ['messages.read', 'messages.moderate', 'disputes.read', 'disputes.resolve', 'users.read', 'missions.read'],
+};
 
 const toDate = (value: DateLike): Date | null => {
     if (!value) return null;
@@ -58,6 +63,19 @@ const clamp = (value: number, min: number, max: number): number => {
 
 const sanitizeSearch = (value: string | undefined): string => {
     return (value || '').trim().toLowerCase();
+};
+
+const getAuthUserOrNull = async (uid: string): Promise<Awaited<ReturnType<typeof auth.getUser>> | null> => {
+    try {
+        return await auth.getUser(uid);
+    } catch {
+        return null;
+    }
+};
+
+const hasMfaEnrollment = async (uid: string): Promise<boolean> => {
+    const authUser = await getAuthUserOrNull(uid);
+    return (authUser?.multiFactor?.enrolledFactors?.length || 0) > 0;
 };
 
 const docHasAfterDate = (value: DateLike, dateFrom: Date | null): boolean => {
@@ -122,6 +140,8 @@ export const getPlatformStats = async (): Promise<PlatformStats> => {
 
 export interface UserWithDetails extends User {
     profile?: ContributorProfile | InitiatorProfile;
+    availableRoles?: Array<'contributor' | 'initiator' | 'admin'>;
+    activeRole?: 'contributor' | 'initiator' | 'admin';
 }
 
 export const getAllUsers = async (options: {
@@ -132,24 +152,46 @@ export const getAllUsers = async (options: {
 }): Promise<{ users: UserWithDetails[]; total: number }> => {
     let query: FirebaseFirestore.Query = db.collection(USERS_COLLECTION);
 
-    if (options.role) {
+    if (options.role === 'admin') {
         query = query.where('primaryRole', '==', options.role);
     }
     if (options.status) {
         query = query.where('accountStatus', '==', options.status);
     }
 
-    const countSnapshot = await query.count().get();
-    const total = countSnapshot.data().count;
-
     query = query.orderBy('createdAt', 'desc');
-    if (options.offset) {
-        query = query.offset(options.offset);
-    }
-    query = query.limit(options.limit || 50);
 
     const snapshot = await query.get();
-    const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as UserWithDetails));
+    const allUsers = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as UserWithDetails));
+
+    const enriched = await Promise.all(allUsers.map(async (user) => {
+        const [contributorDoc, initiatorDoc] = await Promise.all([
+            db.collection(CONTRIBUTOR_PROFILES_COLLECTION).doc(user.id!).get(),
+            db.collection(INITIATOR_PROFILES_COLLECTION).doc(user.id!).get(),
+        ]);
+
+        const availableRoles: Array<'contributor' | 'initiator' | 'admin'> = [];
+        if (contributorDoc.exists) availableRoles.push('contributor');
+        if (initiatorDoc.exists) availableRoles.push('initiator');
+        if (user.primaryRole === 'admin') availableRoles.push('admin');
+
+        return {
+            ...user,
+            availableRoles: availableRoles.length > 0 ? availableRoles : [user.primaryRole],
+            activeRole: user.primaryRole,
+        };
+    }));
+
+    const filtered = enriched.filter((user) => {
+        if (!options.role) return true;
+        if (options.role === 'admin') return user.primaryRole === 'admin';
+        return (user.availableRoles || []).includes(options.role);
+    });
+
+    const offset = options.offset || 0;
+    const limit = options.limit || 50;
+    const users = filtered.slice(offset, offset + limit);
+    const total = filtered.length;
 
     return { users, total };
 };
@@ -164,23 +206,52 @@ export const updateUserStatus = async (
     });
 };
 
-export const verifyUser = async (userId: string): Promise<void> => {
+export const verifyUser = async (
+    userId: string,
+    role: 'contributor' | 'initiator' | 'both' = 'both'
+): Promise<void> => {
     const userDoc = await db.collection(USERS_COLLECTION).doc(userId).get();
     if (!userDoc.exists) throw new Error('User not found');
 
     const user = userDoc.data() as User;
-
-    if (user.primaryRole === 'contributor') {
-        await db.collection(CONTRIBUTOR_PROFILES_COLLECTION).doc(userId).update({
-            verificationStatus: 'verified',
-            verificationDate: new Date(),
-        });
-    } else if (user.primaryRole === 'initiator') {
-        await db.collection(INITIATOR_PROFILES_COLLECTION).doc(userId).update({
-            isVerified: true,
-            verificationDate: new Date(),
-        });
+    if (user.primaryRole === 'admin') {
+        throw new Error('Admin users cannot be verified as marketplace participants');
     }
+
+    const now = new Date();
+    const [contributorDoc, initiatorDoc] = await Promise.all([
+        db.collection(CONTRIBUTOR_PROFILES_COLLECTION).doc(userId).get(),
+        db.collection(INITIATOR_PROFILES_COLLECTION).doc(userId).get(),
+    ]);
+
+    const verifyContributor = role === 'contributor' || role === 'both';
+    const verifyInitiator = role === 'initiator' || role === 'both';
+
+    const writes: Promise<unknown>[] = [];
+    if (verifyContributor && contributorDoc.exists) {
+        writes.push(
+            db.collection(CONTRIBUTOR_PROFILES_COLLECTION).doc(userId).set({
+                verificationStatus: 'verified',
+                verificationDate: now,
+                updatedAt: now,
+            }, { merge: true })
+        );
+    }
+    if (verifyInitiator && initiatorDoc.exists) {
+        writes.push(
+            db.collection(INITIATOR_PROFILES_COLLECTION).doc(userId).set({
+                isVerified: true,
+                verificationDate: now,
+                updatedAt: now,
+            }, { merge: true })
+        );
+    }
+
+    if (writes.length === 0) {
+        throw new Error('No matching role profile found for verification');
+    }
+
+    await Promise.all(writes);
 };
 
 export const getAllMissions = async (options: {
@@ -375,6 +446,14 @@ const normalizePersistedScopes = (adminType: AdminType, scopes: AdminScope[] | u
     return Array.from(new Set(scopes.filter((scope) => whitelist.has(scope))));
 };
 
+const resolveEffectiveScopes = (adminType: AdminType, scopes: AdminScope[] | undefined): AdminScope[] => {
+    if (adminType === 'super_admin') {
+        return ALL_ADMIN_SCOPES;
+    }
+    const normalized = normalizePersistedScopes(adminType, scopes);
+    return normalized.length > 0 ? normalized : DEFAULT_SCOPES_BY_ADMIN_TYPE[adminType];
+};
+
 export interface AdminUserItem {
     uid: string;
     email: string | null;
@@ -410,13 +489,7 @@ const getAdminUserItemByUid = async (uid: string): Promise<AdminUserItem | null>
 
     const profileData = profileDoc.exists ? (profileDoc.data() as AdminProfile) : null;
 
-    let mfaEnrolled = false;
-    try {
-        const authUser = await auth.getUser(uid);
-        mfaEnrolled = (authUser.multiFactor?.enrolledFactors?.length || 0) > 0;
-    } catch {
-        mfaEnrolled = false;
-    }
+    const mfaEnrolled = await hasMfaEnrollment(uid);
 
     const adminType = profileData?.adminType || 'super_admin';
 
@@ -427,7 +500,7 @@ const getAdminUserItemByUid = async (uid: string): Promise<AdminUserItem | null>
         primaryRole: 'admin',
         accountStatus: userData.accountStatus || 'active',
         adminType,
-        scopes: (profileData?.scopes || []) as AdminScope[],
+        scopes: resolveEffectiveScopes(adminType, (profileData?.scopes || []) as AdminScope[]),
         isActive: profileData?.isActive !== false,
         mfaRequired: profileData?.mfaRequired ?? false,
         mfaEnrolled,
@@ -513,12 +586,7 @@ export const createAdminUser = async (input: {
         throw new Error('Target user not found');
     }
 
-    let authUser: Awaited<ReturnType<typeof auth.getUser>> | null = null;
-    try {
-        authUser = await auth.getUser(targetUid);
-    } catch {
-        authUser = null;
-    }
+    const authUser = await getAuthUserOrNull(targetUid);
 
     const userRef = db.collection(USERS_COLLECTION).doc(targetUid);
     const adminRef = db.collection(ADMIN_PROFILES_COLLECTION).doc(targetUid);
@@ -539,7 +607,10 @@ export const createAdminUser = async (input: {
     const profilePayload = stripUndefined({
         userId: targetUid,
         adminType: input.adminType,
-        scopes: normalizePersistedScopes(input.adminType, input.scopes),
+        scopes: normalizePersistedScopes(
+            input.adminType,
+            input.scopes ?? resolveEffectiveScopes(input.adminType, undefined)
+        ),
         isActive: input.isActive ?? true,
         mfaRequired: input.mfaRequired ?? false,
         updatedAt: now,
@@ -587,7 +658,7 @@ export const updateAdminUser = async (
         adminType: nextAdminType,
         scopes: updates.scopes !== undefined
             ? normalizePersistedScopes(nextAdminType, updates.scopes)
-            : profileData?.scopes,
+            : normalizePersistedScopes(nextAdminType, (profileData?.scopes || []) as AdminScope[]),
         isActive: updates.isActive,
         mfaRequired: updates.mfaRequired,
         updatedAt: now,
@@ -605,6 +676,16 @@ export const resetAdminUserMfa = async (params: {
     uid: string;
     actorId: string;
 }): Promise<AdminUserItem> => {
+    const userDoc = await db.collection(USERS_COLLECTION).doc(params.uid).get();
+    if (!userDoc.exists) {
+        throw new Error('User not found');
+    }
+
+    const userData = userDoc.data() as User;
+    if (userData.primaryRole !== 'admin') {
+        throw new Error('Target user is not an admin');
+    }
+
     const now = new Date();
 
     await auth.updateUser(params.uid, {
