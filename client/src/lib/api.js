@@ -1,12 +1,52 @@
 import { auth } from './firebase';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+export const AUTH_SESSION_INVALID_EVENT = 'people:auth-session-invalid';
+
+const createAuthSessionError = (message, details = {}) => {
+    const error = new Error(message);
+    error.name = 'AuthSessionError';
+    error.code = 'AUTH_SESSION_INVALID';
+    Object.assign(error, details);
+    return error;
+};
+
+const dispatchAuthSessionInvalid = (details = {}) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent(AUTH_SESSION_INVALID_EVENT, { detail: details }));
+};
+
+export const isAuthSessionError = (error) => {
+    if (!error) return false;
+    if (error.name === 'AuthSessionError' || error.code === 'AUTH_SESSION_INVALID') return true;
+    if (error.status === 401) return true;
+    const message = typeof error.message === 'string' ? error.message.toLowerCase() : '';
+    return (
+        message.includes('token') ||
+        message.includes('auth') ||
+        message.includes('session') ||
+        message.includes('credential')
+    );
+};
 
 
 const getAuthToken = async () => {
     const user = auth.currentUser;
     if (!user) return null;
-    return await user.getIdToken();
+    try {
+        return await user.getIdToken();
+    } catch (error) {
+        const authError = createAuthSessionError('Failed to retrieve auth session token', {
+            cause: error,
+            endpoint: null,
+            apiBaseUrl: API_URL,
+        });
+        dispatchAuthSessionInvalid({
+            reason: 'token_retrieval_failed',
+            apiBaseUrl: API_URL,
+        });
+        throw authError;
+    }
 };
 
 
@@ -41,6 +81,23 @@ const apiRequest = async (endpoint, options = {}) => {
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
         if (!response.ok) {
+            if (response.status === 401 && token) {
+                const authError = createAuthSessionError(
+                    `Authentication session expired for ${endpoint}`,
+                    {
+                        status: 401,
+                        endpoint,
+                        apiBaseUrl: API_URL,
+                        url: requestUrl,
+                    }
+                );
+                dispatchAuthSessionInvalid({
+                    reason: 'http_401_non_json',
+                    endpoint,
+                    apiBaseUrl: API_URL,
+                });
+                throw authError;
+            }
             throw new Error(`API Error (${endpoint}): ${response.status} ${response.statusText}`);
         }
         return null;
@@ -49,6 +106,25 @@ const apiRequest = async (endpoint, options = {}) => {
     const data = await response.json();
 
     if (!response.ok) {
+        if (response.status === 401 && token) {
+            const authError = createAuthSessionError(
+                `Authentication session expired for ${endpoint}`,
+                {
+                    status: 401,
+                    endpoint,
+                    apiBaseUrl: API_URL,
+                    url: requestUrl,
+                    details: data.details,
+                }
+            );
+            dispatchAuthSessionInvalid({
+                reason: 'http_401',
+                endpoint,
+                apiBaseUrl: API_URL,
+            });
+            throw authError;
+        }
+
         const baseMessage = data.message || data.error || 'API request failed';
         const error = new Error(`${baseMessage} (${endpoint})`);
         error.status = response.status;
