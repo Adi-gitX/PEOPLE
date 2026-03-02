@@ -83,11 +83,45 @@ const checkApiHealth = async () => {
     }
 };
 
+const checkSupportEndpoint = async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+
+    try {
+        const res = await fetch(`${apiUrl}/api/v1/contact`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: '',
+                email: 'invalid',
+                subject: '',
+                message: 'short',
+            }),
+            signal: controller.signal,
+        });
+        const ok = [400, 202].includes(res.status);
+        print(
+            'Support API',
+            ok,
+            ok
+                ? `${apiUrl}/api/v1/contact validated (${res.status})`
+                : `HTTP ${res.status}`
+        );
+        return ok;
+    } catch (error) {
+        print('Support API', false, error instanceof Error ? error.message : 'connection failed');
+        return false;
+    } finally {
+        clearTimeout(timeout);
+    }
+};
+
 const main = async () => {
     console.log('[CLIENT] Running system check (pre-dev)...');
     const envOk = checkEnv();
     const apiOk = await checkApiHealth();
-    const allOk = envOk && apiOk;
+    const supportOk = apiOk ? await checkSupportEndpoint() : false;
+    const allOk = envOk && apiOk && supportOk;
     console.log(
         `[CLIENT] ${allOk ? 'All systems connected and healthy.' : 'System check found issues. Starting frontend anyway.'}`
     );
