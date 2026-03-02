@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     findConversationById,
+    getOtherParticipantProfile,
     getOtherParticipantInitial,
     getOtherParticipantName,
 } from './messagesUtils';
@@ -30,6 +31,12 @@ describe('messagesUtils', () => {
 
     it('returns participant initial from resolved name', () => {
         expect(getOtherParticipantInitial(conversation, 'u1')).toBe('A');
+    });
+
+    it('returns participant profile metadata for the first peer', () => {
+        expect(getOtherParticipantProfile(conversation, 'u1')).toEqual(
+            expect.objectContaining({ fullName: 'Alice Johnson' })
+        );
     });
 
     it('selects a conversation by id', () => {
