@@ -2,8 +2,10 @@ import { Request, Response } from 'express';
 import * as adminService from './admin.service.js';
 import * as walletService from '../wallet/wallet.service.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
+import { env } from '../../config/env.js';
 
 const parseIntQuery = (value: unknown, fallback: number): number => {
+    if (typeof value === 'number' && Number.isFinite(value)) return Math.trunc(value);
     if (typeof value !== 'string') return fallback;
     const parsed = parseInt(value, 10);
     return Number.isNaN(parsed) ? fallback : parsed;
@@ -26,7 +28,7 @@ export const getMyAdminScopes = async (req: Request, res: Response): Promise<voi
             return;
         }
 
-        const summary = await adminService.getAdminScopeSummary(uid);
+        const summary = await adminService.getAdminScopeSummary(uid, req.adminAccess || null);
         if (!summary) {
             sendError(res, 'Admin access required', 403);
             return;
@@ -35,6 +37,146 @@ export const getMyAdminScopes = async (req: Request, res: Response): Promise<voi
         sendSuccess(res, summary);
     } catch {
         sendError(res, 'Failed to get admin scope summary', 500);
+    }
+};
+
+export const getMyAdminSecurity = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            sendError(res, 'Authentication required', 401);
+            return;
+        }
+
+        const summary = await adminService.getAdminSecuritySummary(uid, req.adminAccess || null);
+        if (!summary) {
+            sendError(res, 'Admin access required', 403);
+            return;
+        }
+
+        sendSuccess(res, summary);
+    } catch {
+        sendError(res, 'Failed to get admin security summary', 500);
+    }
+};
+
+export const getAdminUsers = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const result = await adminService.listAdminUsers({
+            q: typeof req.query.q === 'string' ? req.query.q : undefined,
+            adminType: req.query.adminType as adminService.AdminUserItem['adminType'] | undefined,
+            isActive: typeof req.query.isActive === 'boolean' ? req.query.isActive : undefined,
+            limit: parseIntQuery(req.query.limit, 30),
+            cursor: typeof req.query.cursor === 'string' ? req.query.cursor : undefined,
+        });
+        sendSuccess(res, result);
+    } catch {
+        sendError(res, 'Failed to get admin users', 500);
+    }
+};
+
+export const createAdminUser = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const actorId = req.user?.uid || 'unknown';
+        const admin = await adminService.createAdminUser({
+            uid: req.body.uid,
+            email: req.body.email,
+            adminType: req.body.adminType,
+            scopes: req.body.scopes,
+            isActive: req.body.isActive,
+            mfaRequired: req.body.mfaRequired,
+        });
+
+        await adminService.writeAdminAuditLog({
+            actorId,
+            scope: 'admins.manage',
+            action: 'admin.create',
+            resourceType: 'adminProfile',
+            resourceId: admin.uid,
+            reason: `adminType:${admin.adminType}`,
+            metadata: {
+                scopes: admin.scopes,
+                isActive: admin.isActive,
+                mfaRequired: admin.mfaRequired,
+            },
+        });
+
+        sendSuccess(res, { admin }, 201);
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to create admin user';
+        sendError(res, message, 400);
+    }
+};
+
+export const patchAdminUser = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const actorId = req.user?.uid || 'unknown';
+        const { uid } = req.params;
+        const admin = await adminService.updateAdminUser(uid, {
+            adminType: req.body.adminType,
+            scopes: req.body.scopes,
+            isActive: req.body.isActive,
+            mfaRequired: req.body.mfaRequired,
+        });
+
+        await adminService.writeAdminAuditLog({
+            actorId,
+            scope: 'admins.manage',
+            action: 'admin.update',
+            resourceType: 'adminProfile',
+            resourceId: uid,
+            metadata: {
+                adminType: req.body.adminType,
+                scopes: req.body.scopes,
+                isActive: req.body.isActive,
+                mfaRequired: req.body.mfaRequired,
+            },
+        });
+
+        sendSuccess(res, { admin });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to update admin user';
+        const status = message === 'User not found' ? 404 : 400;
+        sendError(res, message, status);
+    }
+};
+
+export const resetAdminUserMfa = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const actorId = req.user?.uid;
+        if (!actorId) {
+            sendError(res, 'Authentication required', 401);
+            return;
+        }
+
+        const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : undefined;
+        if (env.ADMIN_MFA_RESET_REQUIRE_REASON && !reason) {
+            sendError(res, 'Reason is required for MFA reset', 400);
+            return;
+        }
+        const { uid } = req.params;
+        const admin = await adminService.resetAdminUserMfa({
+            uid,
+            actorId,
+        });
+
+        await adminService.writeAdminAuditLog({
+            actorId,
+            scope: 'admins.manage',
+            action: 'admin.mfa.reset',
+            resourceType: 'adminProfile',
+            resourceId: uid,
+            reason,
+            metadata: {
+                reasonProvided: Boolean(reason),
+            },
+        });
+
+        sendSuccess(res, { admin });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to reset admin MFA';
+        const status = message === 'User not found' ? 404 : 400;
+        sendError(res, message, status);
     }
 };
 
@@ -78,13 +220,16 @@ export const updateUserStatus = async (req: Request, res: Response): Promise<voi
 export const verifyUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const { userId } = req.params;
-        await adminService.verifyUser(userId);
+        const { role = 'both' } = req.body as { role?: 'contributor' | 'initiator' | 'both' };
+        await adminService.verifyUser(userId, role);
         await adminService.writeAdminAuditLog({
             actorId: req.user?.uid || 'unknown',
             scope: 'users.write',
             action: 'user.verify',
             resourceType: 'user',
             resourceId: userId,
+            reason: `role:${role}`,
+            metadata: { role },
         });
         sendSuccess(res, { message: 'User verified successfully' });
     } catch (error: unknown) {
