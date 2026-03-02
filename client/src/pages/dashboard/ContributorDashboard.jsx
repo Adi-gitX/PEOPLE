@@ -36,6 +36,8 @@ export default function ContributorDashboard() {
     const { user, profile, refreshProfile } = useAuthStore();
     const [isLooking, setIsLooking] = useState(false);
     const [updating, setUpdating] = useState(false);
+    const [recommendations, setRecommendations] = useState([]);
+    const [recommendationsLoading, setRecommendationsLoading] = useState(false);
 
 
     useEffect(() => {
@@ -43,6 +45,23 @@ export default function ContributorDashboard() {
             setIsLooking(profile.isLookingForWork);
         }
     }, [profile]);
+
+    useEffect(() => {
+        const loadRecommendations = async () => {
+            setRecommendationsLoading(true);
+            try {
+                const response = await api.get('/api/v1/matching/recommendations?limit=5');
+                const payload = response.data || response;
+                setRecommendations(payload.recommendations || []);
+            } catch {
+                setRecommendations([]);
+            } finally {
+                setRecommendationsLoading(false);
+            }
+        };
+
+        loadRecommendations();
+    }, []);
 
 
     const calculateMatchPower = () => {
@@ -274,28 +293,28 @@ export default function ContributorDashboard() {
                 <div className="mt-10">
                     <h3 className="text-lg font-bold text-white mb-4 tracking-tight">Quick Actions</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Link to="/explore" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                        <Link to="/dashboard/contributor/explore" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
                             <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3 group-hover:bg-blue-500/20 transition-colors">
                                 <Compass className="w-5 h-5 text-blue-400" />
                             </div>
                             <div className="font-medium text-white text-sm">Explore Missions</div>
                             <div className="text-xs text-neutral-500 mt-1">Find your next project</div>
                         </Link>
-                        <Link to="/applications" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                        <Link to="/dashboard/contributor/applications" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
                             <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3 group-hover:bg-purple-500/20 transition-colors">
                                 <FileText className="w-5 h-5 text-purple-400" />
                             </div>
                             <div className="font-medium text-white text-sm">My Applications</div>
                             <div className="text-xs text-neutral-500 mt-1">Track your submissions</div>
                         </Link>
-                        <Link to="/messages" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                        <Link to="/dashboard/contributor/messages" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
                             <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center mb-3 group-hover:bg-green-500/20 transition-colors">
                                 <MessageSquare className="w-5 h-5 text-green-400" />
                             </div>
                             <div className="font-medium text-white text-sm">Messages</div>
                             <div className="text-xs text-neutral-500 mt-1">Chat with clients</div>
                         </Link>
-                        <Link to="/wallet" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                        <Link to="/dashboard/contributor/wallet" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
                             <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-3 group-hover:bg-orange-500/20 transition-colors">
                                 <Wallet className="w-5 h-5 text-orange-400" />
                             </div>
@@ -303,6 +322,42 @@ export default function ContributorDashboard() {
                             <div className="text-xs text-neutral-500 mt-1">Manage earnings</div>
                         </Link>
                     </div>
+                </div>
+
+                <div className="mt-8 rounded-xl border border-white/[0.08] bg-[#0A0A0A] p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-white tracking-tight">Recommended Missions</h3>
+                        <Link to="/dashboard/contributor/explore" className="text-xs text-zinc-400 hover:text-white">
+                            View all
+                        </Link>
+                    </div>
+                    {recommendationsLoading ? (
+                        <p className="text-sm text-zinc-500">Loading recommendations...</p>
+                    ) : recommendations.length === 0 ? (
+                        <p className="text-sm text-zinc-500">No recommendations yet. Keep your profile updated for better matches.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {recommendations.map((item) => (
+                                <Link
+                                    key={item.missionId}
+                                    to={`/dashboard/contributor/missions/${item.missionId}`}
+                                    className="block rounded-lg border border-white/10 bg-black/40 p-3 hover:border-white/20"
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-sm font-medium text-white truncate">{item.missionTitle}</p>
+                                        <span className="text-xs font-mono text-green-400">{item.matchScore}% match</span>
+                                    </div>
+                                    <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                        <div
+                                            className="h-full bg-green-500"
+                                            style={{ width: `${Math.min(100, Math.max(0, item.matchScore || 0))}%` }}
+                                        />
+                                    </div>
+                                    <div className="mt-2 text-[11px] text-zinc-500">{item.reason}</div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </DashboardLayout>
