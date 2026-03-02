@@ -3,14 +3,23 @@ import { Button } from '../ui/Button';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { useAuthStore } from '../../store/useAuthStore';
 import { LogOut, User, MessageSquare, Wallet, Menu, X, Compass, Users, Zap } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { getDefaultPathForRole } from '../../lib/roleRouting';
+import { useRoleCapabilities } from '../../hooks/useApi';
+import { toast } from 'sonner';
 
 export function Navbar() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { isAuthenticated, user, role, logout } = useAuthStore();
+    const { isAuthenticated, user, role, logout, switchActiveRole } = useAuthStore();
     const [showDropdown, setShowDropdown] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [switchingRole, setSwitchingRole] = useState('');
+    const { data: capabilityData } = useRoleCapabilities({
+        immediate: Boolean(isAuthenticated && user?.uid),
+        deps: [user?.uid, role],
+        resetOnFetch: true,
+    });
 
     const isDashboard = location.pathname.includes('/dashboard') ||
         location.pathname.includes('/messages') ||
@@ -20,18 +29,82 @@ export function Navbar() {
         location.pathname.includes('/admin') ||
         location.pathname.includes('/missions/new');
 
-    const isInitiator = role === 'initiator';
-    const isContributor = role === 'contributor';
-    const dashboardPath = role === 'admin' ? '/admin' : `/dashboard/${role || 'contributor'}`;
+    const roleCapabilities = useMemo(() => {
+        const currentRole = role || 'contributor';
+        const fallback = {
+            currentRole,
+            availableRoles: [currentRole],
+            routes: {
+                contributor: '/dashboard/contributor',
+                initiator: '/dashboard/initiator',
+                admin: '/admin',
+            },
+            disabledRoles: {
+                contributor: currentRole === 'contributor' ? null : 'Contributor role is unavailable for this account',
+                initiator: currentRole === 'initiator' ? null : 'Initiator role is unavailable for this account',
+                admin: currentRole === 'admin' ? null : 'Admin role is unavailable for this account',
+            },
+        };
+
+        if (!capabilityData) return fallback;
+        return {
+            currentRole: capabilityData.currentRole || fallback.currentRole,
+            availableRoles: Array.isArray(capabilityData.availableRoles) && capabilityData.availableRoles.length > 0
+                ? capabilityData.availableRoles
+                : fallback.availableRoles,
+            routes: capabilityData.routes || fallback.routes,
+            disabledRoles: capabilityData.disabledRoles || fallback.disabledRoles,
+        };
+    }, [capabilityData, role]);
+
+    const isInitiator = roleCapabilities.currentRole === 'initiator';
+    const isContributor = roleCapabilities.currentRole === 'contributor';
+    const dashboardPath = roleCapabilities.routes?.[roleCapabilities.currentRole] || getDefaultPathForRole(roleCapabilities.currentRole);
+    const profilePath = roleCapabilities.currentRole === 'admin' ? '/admin/security' : '/dashboard/profile';
+    const contributorAvailable = roleCapabilities.availableRoles.includes('contributor');
+    const initiatorAvailable = roleCapabilities.availableRoles.includes('initiator');
 
     const handleLogout = async () => {
         await logout();
         navigate('/');
     };
 
+    const handleRoleSwitch = async (targetRole) => {
+        if (!roleCapabilities.availableRoles.includes(targetRole)) return;
+        if (targetRole === roleCapabilities.currentRole) return;
+
+        setSwitchingRole(targetRole);
+        try {
+            if (targetRole === 'contributor' || targetRole === 'initiator') {
+                await switchActiveRole(targetRole);
+            }
+
+            const targetPath = roleCapabilities.routes?.[targetRole] || getDefaultPathForRole(targetRole);
+            if (targetPath) {
+                navigate(targetPath);
+            }
+        } catch (error) {
+            toast.error(error?.message || 'Failed to switch role');
+        } finally {
+            setSwitchingRole('');
+        }
+    };
+
     const navLinks = [
-        { label: 'Missions', href: '/explore', icon: Compass },
-        { label: 'Network', href: '/network', icon: Users },
+        {
+            label: 'Missions',
+            href: isAuthenticated && roleCapabilities.currentRole === 'contributor'
+                ? '/dashboard/contributor/explore'
+                : '/explore',
+            icon: Compass,
+        },
+        {
+            label: 'Network',
+            href: isAuthenticated && roleCapabilities.currentRole === 'initiator'
+                ? '/dashboard/initiator/network'
+                : '/network',
+            icon: Users,
+        },
         { label: 'Integrations', href: '/integrations', icon: Zap },
     ];
 
@@ -60,18 +133,38 @@ export function Navbar() {
                     {/* Right Side Actions */}
                     <div className="flex items-center gap-2 md:gap-4">
                         {/* Dashboard Switcher - Hide in dashboard as it's in sidebar, show only on public pages if auth */}
-                        {!isDashboard && isAuthenticated && (
+                        {!isDashboard && isAuthenticated && role !== 'admin' && (
                             <div className="hidden lg:flex items-center bg-[#0A0A0A] rounded-lg p-0.5 border border-white/[0.08]">
-                                <Link to="/dashboard/contributor">
-                                    <button className={`px-3 py-1 text-[11px] font-medium rounded-md transition-all ${isContributor ? 'bg-white text-black shadow-sm' : 'text-neutral-500 hover:text-white'}`}>
-                                        Contributor
-                                    </button>
-                                </Link>
-                                <Link to="/dashboard/initiator">
-                                    <button className={`px-3 py-1 text-[11px] font-medium rounded-md transition-all ${isInitiator ? 'bg-white text-black shadow-sm' : 'text-neutral-500 hover:text-white'}`}>
-                                        Initiator
-                                    </button>
-                                </Link>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRoleSwitch('contributor')}
+                                    disabled={!contributorAvailable || Boolean(switchingRole)}
+                                    title={!contributorAvailable ? roleCapabilities.disabledRoles?.contributor || undefined : undefined}
+                                    className={`px-3 py-1 text-[11px] font-medium rounded-md transition-all ${
+                                        isContributor
+                                            ? 'bg-white text-black shadow-sm'
+                                            : contributorAvailable
+                                                ? 'text-neutral-500 hover:text-white'
+                                                : 'text-neutral-700 cursor-not-allowed'
+                                    }`}
+                                >
+                                    Contributor
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRoleSwitch('initiator')}
+                                    disabled={!initiatorAvailable || Boolean(switchingRole)}
+                                    title={!initiatorAvailable ? roleCapabilities.disabledRoles?.initiator || undefined : undefined}
+                                    className={`px-3 py-1 text-[11px] font-medium rounded-md transition-all ${
+                                        isInitiator
+                                            ? 'bg-white text-black shadow-sm'
+                                            : initiatorAvailable
+                                                ? 'text-neutral-500 hover:text-white'
+                                                : 'text-neutral-700 cursor-not-allowed'
+                                    }`}
+                                >
+                                    Initiator
+                                </button>
                             </div>
                         )}
 
@@ -117,7 +210,7 @@ export function Navbar() {
                                             </div>
                                             <div className="py-2">
                                                 <Link
-                                                    to="/dashboard/profile"
+                                                    to={profilePath}
                                                     onClick={() => setShowDropdown(false)}
                                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-white/5"
                                                 >
@@ -226,7 +319,7 @@ export function Navbar() {
                                         Dashboard
                                     </Link>
                                     <Link
-                                        to="/dashboard/profile"
+                                        to={profilePath}
                                         onClick={() => setMobileMenuOpen(false)}
                                         className="flex items-center gap-3 px-4 py-3 rounded-lg text-neutral-400 hover:bg-white/5 hover:text-white"
                                     >
