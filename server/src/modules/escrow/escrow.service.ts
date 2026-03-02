@@ -217,6 +217,10 @@ export const releaseFunds = async (
         return { success: false, error: 'Escrow account not found' };
     }
 
+    if (escrow.initiatorId === contributorId) {
+        return { success: false, error: 'Self-directed payouts are not allowed' };
+    }
+
     if (escrow.balance < amount) {
         return { success: false, error: 'Insufficient escrow balance' };
     }
