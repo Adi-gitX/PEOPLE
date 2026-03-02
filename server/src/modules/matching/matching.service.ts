@@ -23,6 +23,8 @@ import {
 const CONTRIBUTOR_PROFILES_COLLECTION = 'contributorProfiles';
 const MISSIONS_COLLECTION = 'missions';
 const SKILLS_COLLECTION = 'skills';
+const MATCHING_SNAPSHOTS_COLLECTION = 'matchingSnapshots';
+const MATCHING_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 // ─── Skill Name Cache ────────────────────────────────────────────────────────
 
@@ -376,4 +378,117 @@ export const calculateMatchPreview = async (
     const contributor = { id: contributorDoc.id, ...contributorDoc.data() } as ContributorProfile;
 
     return calculateMissionMatch(mission, contributor);
+};
+
+interface MatchingSnapshotDoc {
+    missionId: string;
+    queryHash: string;
+    results: MatchResult[];
+    computedAt: Date;
+    expiresAt: Date;
+    updatedAt: Date;
+}
+
+const buildQueryHash = (options: RankingOptions): string => {
+    return JSON.stringify({
+        limit: options.limit ?? 20,
+        strictBudget: Boolean(options.strictBudget),
+        diversityBoost: options.diversityBoost ?? true,
+        minimumScore: options.minimumScore ?? 30,
+    });
+};
+
+const toDate = (value: unknown): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'object' && value !== null && 'toDate' in value && typeof (value as { toDate: () => Date }).toDate === 'function') {
+        return (value as { toDate: () => Date }).toDate();
+    }
+    return null;
+};
+
+export const runMissionMatching = async (
+    missionId: string,
+    options: RankingOptions = {}
+): Promise<{
+    matches: MatchResult[];
+    source: 'cache' | 'recomputed';
+    computedAt: Date;
+    expiresAt: Date;
+}> => {
+    const normalized: RankingOptions = {
+        limit: options.limit ?? 20,
+        minimumScore: options.minimumScore ?? 30,
+        strictBudget: options.strictBudget ?? false,
+        diversityBoost: options.diversityBoost ?? true,
+    };
+    const queryHash = buildQueryHash(normalized);
+    const snapshotRef = db.collection(MATCHING_SNAPSHOTS_COLLECTION).doc(missionId);
+    const snapshotDoc = await snapshotRef.get();
+
+    if (snapshotDoc.exists) {
+        const data = snapshotDoc.data() as MatchingSnapshotDoc;
+        const expiresAt = toDate(data.expiresAt);
+        const computedAt = toDate(data.computedAt);
+        if (
+            data.queryHash === queryHash
+            && expiresAt
+            && computedAt
+            && Date.now() < expiresAt.getTime()
+            && Array.isArray(data.results)
+        ) {
+            return {
+                matches: data.results,
+                source: 'cache',
+                computedAt,
+                expiresAt,
+            };
+        }
+    }
+
+    const matches = await matchContributorsToMission(missionId, normalized);
+    const computedAt = new Date();
+    const expiresAt = new Date(computedAt.getTime() + MATCHING_TTL_MS);
+
+    await snapshotRef.set({
+        missionId,
+        queryHash,
+        results: matches,
+        computedAt,
+        expiresAt,
+        updatedAt: computedAt,
+    } as MatchingSnapshotDoc, { merge: true });
+
+    return {
+        matches,
+        source: 'recomputed',
+        computedAt,
+        expiresAt,
+    };
+};
+
+export const getMissionMatchingResults = async (
+    missionId: string
+): Promise<{
+    matches: MatchResult[];
+    source: 'cache' | 'recomputed';
+    computedAt: Date;
+    expiresAt: Date;
+}> => {
+    const snapshotDoc = await db.collection(MATCHING_SNAPSHOTS_COLLECTION).doc(missionId).get();
+    if (snapshotDoc.exists) {
+        const data = snapshotDoc.data() as MatchingSnapshotDoc;
+        const computedAt = toDate(data.computedAt);
+        const expiresAt = toDate(data.expiresAt);
+        if (computedAt && expiresAt && Array.isArray(data.results) && Date.now() < expiresAt.getTime()) {
+            return {
+                matches: data.results,
+                source: 'cache',
+                computedAt,
+                expiresAt,
+            };
+        }
+    }
+
+    return runMissionMatching(missionId);
 };
