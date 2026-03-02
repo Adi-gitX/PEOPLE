@@ -7,6 +7,7 @@ import { db } from '../../config/firebase.js';
 import type { EscrowAccount, EscrowTransaction, PaymentSchedule, MilestonePayment } from '../../types/firestore.js';
 import Stripe from 'stripe';
 import { env } from '../../config/env.js';
+import * as walletService from '../wallet/wallet.service.js';
 
 const stripe = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null;
 
@@ -210,7 +211,7 @@ export const releaseFunds = async (
     amount: number,
     milestoneId?: string,
     description?: string
-): Promise<{ success: boolean; transaction?: EscrowTransaction; error?: string }> => {
+): Promise<{ success: boolean; transaction?: EscrowTransaction; warning?: string; error?: string }> => {
     const escrow = await getEscrowAccountById(escrowId);
     if (!escrow) {
         return { success: false, error: 'Escrow account not found' };
@@ -257,17 +258,18 @@ export const releaseFunds = async (
         description: description || 'Milestone payment release',
     });
 
-    // Record platform fee transaction
-    await recordTransaction({
-        missionId: escrow.missionId,
-        milestoneId,
-        initiatorId: escrow.initiatorId,
-        type: 'platform_fee',
-        amount: platformFee,
-        currency: escrow.currency,
-        status: 'completed',
-        description: 'Platform fee',
-    });
+    if (platformFee > 0) {
+        await recordTransaction({
+            missionId: escrow.missionId,
+            milestoneId,
+            initiatorId: escrow.initiatorId,
+            type: 'platform_fee',
+            amount: platformFee,
+            currency: escrow.currency,
+            status: 'completed',
+            description: 'Platform fee',
+        });
+    }
 
     // Update milestone if provided
     if (milestoneId) {
@@ -282,9 +284,23 @@ export const releaseFunds = async (
             });
     }
 
-    // TODO: Credit contributor's wallet
-
-    return { success: true, transaction };
+    try {
+        await walletService.addEarnings(
+            contributorId,
+            netAmount,
+            description || 'Escrow release payout',
+            'mission',
+            escrow.missionId
+        );
+        return { success: true, transaction };
+    } catch (error) {
+        console.error('[escrow] wallet credit failed after release', error);
+        return {
+            success: true,
+            transaction,
+            warning: 'Funds were released but wallet credit is pending reconciliation',
+        };
+    }
 };
 
 // ═══════════════════════════════════════════════════════════════════
