@@ -25,6 +25,7 @@ export default function AdminUsersPage() {
     const [filter, setFilter] = useState({ role: '', status: '', search: '' });
     const [total, setTotal] = useState(0);
     const [processingActionId, setProcessingActionId] = useState('');
+    const [verifyTargetByUser, setVerifyTargetByUser] = useState({});
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
@@ -67,11 +68,26 @@ export default function AdminUsersPage() {
         }
     };
 
-    const handleVerify = async (userId) => {
-        setProcessingActionId(`${userId}:verify`);
+    const resolveVerifyOptions = (user) => {
+        const availableRoles = Array.isArray(user.availableRoles) && user.availableRoles.length > 0
+            ? user.availableRoles
+            : [user.primaryRole];
+        const hasContributor = availableRoles.includes('contributor');
+        const hasInitiator = availableRoles.includes('initiator');
+
+        const options = [];
+        if (hasContributor) options.push('contributor');
+        if (hasInitiator) options.push('initiator');
+        if (hasContributor && hasInitiator) options.push('both');
+        return options;
+    };
+
+    const handleVerify = async (userId, role) => {
+        const actionKey = `${userId}:verify:${role}`;
+        setProcessingActionId(actionKey);
         try {
-            await api.patch(`/api/v1/admin/users/${userId}/verify`);
-            toast.success('User verified successfully');
+            await api.patch(`/api/v1/admin/users/${userId}/verify`, { role });
+            toast.success(`User verified (${role})`);
             fetchUsers();
         } catch {
             toast.error('Failed to verify user');
@@ -166,8 +182,14 @@ export default function AdminUsersPage() {
                             <tbody className="divide-y divide-white/[0.05]">
                                 {filteredUsers.map((user) => {
                                     const statusConfig = STATUS_CONFIG[user.accountStatus] || STATUS_CONFIG.active;
-                                    const roleConfig = ROLE_CONFIG[user.primaryRole] || ROLE_CONFIG.contributor;
                                     const rowBusy = processingActionId.startsWith(`${user.id}:`);
+                                    const availableRoles = Array.isArray(user.availableRoles) && user.availableRoles.length > 0
+                                        ? user.availableRoles
+                                        : [user.primaryRole];
+                                    const verifyOptions = resolveVerifyOptions(user);
+                                    const selectedVerifyRole = verifyTargetByUser[user.id]
+                                        || (verifyOptions.includes('both') ? 'both' : verifyOptions[0] || '');
+                                    const hasAnyVerificationTarget = verifyOptions.length > 0;
 
                                     return (
                                         <tr key={user.id} className="hover:bg-white/[0.02] transition-colors group">
@@ -183,9 +205,21 @@ export default function AdminUsersPage() {
                                                 </div>
                                             </td>
                                             <td className="px-5 py-5">
-                                                <span className={`text-sm font-semibold ${roleConfig.color}`}>
-                                                    {roleConfig.label}
-                                                </span>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    {availableRoles.map((role) => {
+                                                        const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG.contributor;
+                                                        const isActive = role === (user.activeRole || user.primaryRole);
+                                                        return (
+                                                            <span
+                                                                key={`${user.id}:${role}`}
+                                                                className={`px-2 py-1 rounded-full text-xs font-semibold border border-current/20 ${roleConfig.color}`}
+                                                                title={isActive ? 'Active workspace role' : undefined}
+                                                            >
+                                                                {roleConfig.label}{isActive ? ' (active)' : ''}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
                                             </td>
                                             <td className="px-5 py-5">
                                                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusConfig.color} border border-current/10`}>
@@ -197,14 +231,39 @@ export default function AdminUsersPage() {
                                             </td>
                                             <td className="px-5 py-5">
                                                 <div className="flex items-center justify-end gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        onClick={() => handleVerify(user.id)}
-                                                        disabled={rowBusy}
-                                                        className="p-2 text-neutral-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all"
-                                                        title="Verify"
-                                                    >
-                                                        <Shield className="w-4 h-4" />
-                                                    </button>
+                                                    {hasAnyVerificationTarget ? (
+                                                        <>
+                                                            <select
+                                                                value={selectedVerifyRole}
+                                                                disabled={rowBusy}
+                                                                onChange={(event) => {
+                                                                    const value = event.target.value;
+                                                                    setVerifyTargetByUser((prev) => ({
+                                                                        ...prev,
+                                                                        [user.id]: value,
+                                                                    }));
+                                                                }}
+                                                                className="bg-black/40 border border-white/[0.1] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                                                                title="Verify target role"
+                                                            >
+                                                                {verifyOptions.map((option) => (
+                                                                    <option key={`${user.id}:${option}`} value={option}>
+                                                                        {option === 'both' ? 'Both' : option.charAt(0).toUpperCase() + option.slice(1)}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <button
+                                                                onClick={() => handleVerify(user.id, selectedVerifyRole)}
+                                                                disabled={rowBusy || !selectedVerifyRole}
+                                                                className="p-2 text-neutral-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all disabled:opacity-40"
+                                                                title="Verify"
+                                                            >
+                                                                <Shield className="w-4 h-4" />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-xs text-neutral-600 px-2">No verify target</span>
+                                                    )}
                                                     {user.accountStatus !== 'suspended' && (
                                                         <button
                                                             onClick={() => handleStatusUpdate(user.id, 'suspended')}
