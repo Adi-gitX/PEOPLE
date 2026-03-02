@@ -29,6 +29,10 @@ export const updateUserSchema = z.object({
     avatarUrl: z.string().url().optional(),
 }).partial();
 
+export const updateActiveRoleSchema = z.object({
+    role: publicUserRoleSchema,
+});
+
 // ─── Contributor Profile Schemas ───
 export const contributorVerificationStatus = z.enum([
     'pending',
@@ -326,6 +330,25 @@ export const adminMfaResetSchema = z.object({
     reason: z.string().min(3).max(500).optional(),
 });
 
+export const adminVerifyUserSchema = z.object({
+    role: z.enum(['contributor', 'initiator', 'both']).optional(),
+});
+
+// ─── Public Search Schemas ───
+export const searchUsersQuerySchema = z.object({
+    q: z.string().max(200).optional(),
+    role: z.enum(['contributor', 'initiator']).optional(),
+    skills: z.union([z.string(), z.array(z.string())]).optional(),
+    location: z.string().max(100).optional(),
+    availability: z.coerce.boolean().optional(),
+    verified: z.coerce.boolean().optional(),
+    minRate: z.coerce.number().min(0).optional(),
+    maxRate: z.coerce.number().min(0).optional(),
+    sort: z.enum(['relevance', 'trust', 'match_power', 'newest']).optional(),
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+    cursor: z.string().optional(),
+});
+
 // ─── Type Exports ───
 export type UserRole = z.infer<typeof userRoleSchema>;
 export type PublicUserRole = z.infer<typeof publicUserRoleSchema>;
@@ -353,8 +376,11 @@ export type AdminUsersQuery = z.infer<typeof adminUsersQuerySchema>;
 export type CreateAdminUser = z.infer<typeof createAdminUserSchema>;
 export type UpdateAdminUser = z.infer<typeof updateAdminUserSchema>;
 export type AdminMfaReset = z.infer<typeof adminMfaResetSchema>;
+export type AdminVerifyUser = z.infer<typeof adminVerifyUserSchema>;
+export type SearchUsersQuery = z.infer<typeof searchUsersQuerySchema>;
 
 export type CreateUser = z.infer<typeof createUserSchema>;
+export type UpdateActiveRole = z.infer<typeof updateActiveRoleSchema>;
 export type UpdateContributorProfile = z.infer<typeof updateContributorProfileSchema>;
 export type UpdateInitiatorProfile = z.infer<typeof updateInitiatorProfileSchema>;
 export type CreateMission = z.infer<typeof createMissionSchema>;
