@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { env } from '../../config/index.js';
 import * as usersService from './users.service.js';
 import { sendSuccess, sendError, sendCreated } from '../../utils/response.js';
 
@@ -65,7 +66,10 @@ export const updateCurrentUser = async (req: Request, res: Response): Promise<vo
         await usersService.updateUser(uid, { fullName, avatarUrl });
         const { user, profile } = await usersService.getUserWithProfile(uid);
         sendSuccess(res, { message: 'User updated successfully', user, profile });
-    } catch {
+    } catch (error) {
+        if (env.NODE_ENV === 'development') {
+            console.error('[users:updateCurrentUser] failed', error);
+        }
         sendError(res, 'Failed to update user', 500);
     }
 };
