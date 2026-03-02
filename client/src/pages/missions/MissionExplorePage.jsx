@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PublicLayout } from '../../components/layout/PublicLayout';
+import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Button } from '../../components/ui/Button';
 import { useMissions } from '../../hooks/useApi';
+import { useAuthStore } from '../../store/useAuthStore';
 import { Search, Filter, Cpu, Database, Layout, X, Smartphone, Palette, Cloud, Code } from 'lucide-react';
 
 const TYPE_ICONS = {
@@ -24,6 +26,13 @@ const COMPLEXITY_COLORS = {
 };
 
 export default function MissionExplorePage() {
+    const { isAuthenticated, role } = useAuthStore();
+    const useDashboardLayout = isAuthenticated && (role === 'contributor' || role === 'initiator');
+    const Layout = useDashboardLayout ? DashboardLayout : PublicLayout;
+    const missionDetailsPathPrefix = useDashboardLayout
+        ? `/dashboard/${role}/missions`
+        : '/missions';
+
     const [filters, setFilters] = useState({
         type: '',
         complexity: '',
@@ -60,7 +69,7 @@ export default function MissionExplorePage() {
     }, [filters.type, filters.complexity, refetch]);
 
     return (
-        <PublicLayout>
+        <Layout>
             <div className="pt-16 pb-20 px-6 max-w-7xl mx-auto">
 
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
@@ -210,7 +219,7 @@ export default function MissionExplorePage() {
                             return (
                                 <Link
                                     key={mission.id}
-                                    to={`/missions/${mission.id}`}
+                                    to={`${missionDetailsPathPrefix}/${mission.id}`}
                                     className="group rounded-xl border border-white/10 bg-white/5 p-6 hover:border-white/20 transition-all hover:bg-white/[0.07] cursor-pointer block text-left"
                                 >
                                     <div>
@@ -257,6 +266,6 @@ export default function MissionExplorePage() {
                     </div>
                 )}
             </div>
-        </PublicLayout>
+        </Layout>
     );
 }
