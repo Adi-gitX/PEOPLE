@@ -5,6 +5,7 @@ import { signUp, signInWithGoogle } from '../../lib/auth';
 import { User, Mail, Lock, Briefcase, Code, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '../../store/useAuthStore';
+import { getDefaultPathForRole } from '../../lib/roleRouting';
 
 export function SignupForm() {
     const [formData, setFormData] = useState({
@@ -16,7 +17,7 @@ export function SignupForm() {
     });
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
-    const { setRole, refreshProfile } = useAuthStore();
+    const { refreshProfile } = useAuthStore();
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -62,14 +63,12 @@ export function SignupForm() {
                 formData.role
             );
 
-            setRole(formData.role);
-            await refreshProfile();
+            const userData = await refreshProfile();
+            const role = userData?.activeRole || userData?.user?.primaryRole || formData.role;
 
             toast.success('Account created successfully!');
 
-            const dashboardPath = formData.role === 'initiator'
-                ? '/dashboard/initiator'
-                : '/dashboard/contributor';
+            const dashboardPath = getDefaultPathForRole(role);
 
             navigate(dashboardPath, { replace: true });
         } catch (error) {
@@ -84,15 +83,13 @@ export function SignupForm() {
         setIsLoading(true);
         try {
             await signInWithGoogle(formData.role);
-            setRole(formData.role);
             await new Promise(r => setTimeout(r, 500));
-            await refreshProfile();
+            const userData = await refreshProfile();
+            const role = userData?.activeRole || userData?.user?.primaryRole || formData.role;
 
             toast.success('Welcome!');
 
-            const dashboardPath = formData.role === 'initiator'
-                ? '/dashboard/initiator'
-                : '/dashboard/contributor';
+            const dashboardPath = getDefaultPathForRole(role);
 
             navigate(dashboardPath, { replace: true });
         } catch (error) {
@@ -111,7 +108,7 @@ export function SignupForm() {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground ml-1">I want to...</label>
+                <label className="text-sm font-medium text-muted-foreground ml-1">Start with...</label>
                 <div className="grid grid-cols-2 gap-2">
                     <button
                         type="button"
@@ -142,6 +139,7 @@ export function SignupForm() {
                         <span className="text-[10px] text-zinc-500">Initiator</span>
                     </button>
                 </div>
+                <p className="text-[10px] text-zinc-500 ml-1">Both Contributor and Initiator workspaces are enabled for your account. You can switch anytime.</p>
             </div>
 
             <div className="space-y-1">
