@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from '../layout/Navbar';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useRoleCapabilities } from '../../hooks/useApi';
+import { getDefaultPathForRole } from '../../lib/roleRouting';
+import { toast } from 'sonner';
 import {
     LayoutDashboard,
     Compass,
@@ -19,12 +22,14 @@ import {
     Zap,
     ChevronRight,
     AlertTriangle,
-    LifeBuoy
+    LifeBuoy,
+    UserCog,
+    ShieldCheck
 } from 'lucide-react';
 
 const contributorNavItems = [
     { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard/contributor' },
-    { label: 'Explore Missions', icon: Compass, href: '/explore' },
+    { label: 'Explore Missions', icon: Compass, href: '/dashboard/contributor/explore' },
     { label: 'My Applications', icon: FileText, href: '/applications' },
     { label: 'Messages', icon: MessageSquare, href: '/messages' },
     { label: 'Notifications', icon: Bell, href: '/notifications' },
@@ -35,7 +40,7 @@ const contributorNavItems = [
 const initiatorNavItems = [
     { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard/initiator' },
     { label: 'Create Mission', icon: Plus, href: '/missions/new' },
-    { label: 'Explore Talent', icon: Users, href: '/network' },
+    { label: 'Explore Talent', icon: Users, href: '/dashboard/initiator/network' },
     { label: 'Messages', icon: MessageSquare, href: '/messages' },
     { label: 'Notifications', icon: Bell, href: '/notifications' },
     { label: 'Wallet', icon: Wallet, href: '/wallet' },
@@ -52,12 +57,31 @@ const adminNavItems = [
     { label: 'Withdrawals', icon: Wallet, href: '/admin/withdrawals', scopes: ['withdrawals.read'] },
     { label: 'Payments', icon: Target, href: '/admin/payments', scopes: ['payments.read', 'escrow.read'] },
     { label: 'Audit Log', icon: FileText, href: '/admin/audit', scopes: ['audit.read'] },
+    { label: 'Admins', icon: UserCog, href: '/admin/admins', scopes: ['admins.manage'] },
+    { label: 'Security', icon: ShieldCheck, href: '/admin/security' },
 ];
+
+const roleMeta = {
+    contributor: { label: 'Contributor', accountLabel: 'Contributor Account' },
+    initiator: { label: 'Initiator', accountLabel: 'Initiator Account' },
+    admin: { label: 'Admin', accountLabel: 'Admin Account' },
+};
+
+const roleOrder = ['contributor', 'initiator', 'admin'];
 
 export function DashboardLayout({ children }) {
     const location = useLocation();
-    const { role, user, adminAccess } = useAuthStore();
+    const navigate = useNavigate();
+    const { role, user, adminAccess, switchActiveRole } = useAuthStore();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
+    const [switchingRole, setSwitchingRole] = useState('');
+    const roleSwitcherRef = useRef(null);
+    const { data: capabilityData } = useRoleCapabilities({
+        immediate: Boolean(user?.uid),
+        deps: [user?.uid, role],
+        resetOnFetch: true,
+    });
 
     // Handle resize to auto-close/open sidebar logic if needed
     useEffect(() => {
@@ -71,9 +95,66 @@ export function DashboardLayout({ children }) {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    useEffect(() => {
+        if (!roleSwitcherOpen) return undefined;
+
+        const handleOutside = (event) => {
+            if (!roleSwitcherRef.current) return;
+            if (!roleSwitcherRef.current.contains(event.target)) {
+                setRoleSwitcherOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleOutside);
+        return () => document.removeEventListener('mousedown', handleOutside);
+    }, [roleSwitcherOpen]);
+
+    const roleCapabilities = useMemo(() => {
+        const currentRole = role || 'contributor';
+        const fallback = {
+            currentRole,
+            availableRoles: [currentRole],
+            routes: {
+                contributor: '/dashboard/contributor',
+                initiator: '/dashboard/initiator',
+                admin: '/admin',
+            },
+            disabledRoles: {
+                contributor: currentRole === 'contributor' ? null : 'Contributor role is unavailable for this account',
+                initiator: currentRole === 'initiator' ? null : 'Initiator role is unavailable for this account',
+                admin: currentRole === 'admin' ? null : 'Admin role is unavailable for this account',
+            },
+        };
+
+        if (!capabilityData) return fallback;
+
+        return {
+            currentRole: capabilityData.currentRole || fallback.currentRole,
+            availableRoles: Array.isArray(capabilityData.availableRoles) && capabilityData.availableRoles.length > 0
+                ? capabilityData.availableRoles
+                : fallback.availableRoles,
+            routes: capabilityData.routes || fallback.routes,
+            disabledRoles: capabilityData.disabledRoles || fallback.disabledRoles,
+        };
+    }, [capabilityData, role]);
+
+    const activeRole = useMemo(() => {
+        const routeRole = location.pathname.startsWith('/admin')
+            ? 'admin'
+            : location.pathname.startsWith('/dashboard/initiator')
+                ? 'initiator'
+                : location.pathname.startsWith('/dashboard/contributor')
+                    ? 'contributor'
+                    : roleCapabilities.currentRole;
+
+        return (roleCapabilities.availableRoles || []).includes(routeRole)
+            ? routeRole
+            : roleCapabilities.currentRole;
+    }, [location.pathname, roleCapabilities]);
+
     const navItems = (() => {
-        if (role !== 'admin') {
-            return role === 'initiator' ? initiatorNavItems : contributorNavItems;
+        if (activeRole !== 'admin') {
+            return activeRole === 'initiator' ? initiatorNavItems : contributorNavItems;
         }
 
         if (!adminAccess || adminAccess.adminType === 'super_admin') {
@@ -87,11 +168,53 @@ export function DashboardLayout({ children }) {
         });
     })();
 
+    const visibleRoleOptions = useMemo(() => {
+        const availableSet = new Set(roleCapabilities.availableRoles || []);
+        return roleOrder.filter((roleKey) => availableSet.has(roleKey));
+    }, [roleCapabilities.availableRoles]);
+
     const isActive = (href) => {
         if (href === '/dashboard/contributor' || href === '/dashboard/initiator' || href === '/admin') {
             return location.pathname === href;
         }
+        if (href === '/dashboard/contributor/explore') {
+            return location.pathname.startsWith('/dashboard/contributor/explore')
+                || location.pathname.startsWith('/dashboard/contributor/missions/')
+                || location.pathname.startsWith('/missions/');
+        }
+        if (href === '/dashboard/initiator/network') {
+            return location.pathname.startsWith('/dashboard/initiator/network')
+                || location.pathname.startsWith('/network');
+        }
         return location.pathname.startsWith(href);
+    };
+
+    const handleRoleSwitch = async (targetRole) => {
+        const availableRoles = roleCapabilities.availableRoles || [];
+        if (!availableRoles.includes(targetRole)) return;
+        if (targetRole === activeRole) {
+            setRoleSwitcherOpen(false);
+            return;
+        }
+
+        setSwitchingRole(targetRole);
+
+        try {
+            if (targetRole === 'contributor' || targetRole === 'initiator') {
+                await switchActiveRole(targetRole);
+            }
+
+            const targetPath = roleCapabilities.routes?.[targetRole] || getDefaultPathForRole(targetRole);
+            setRoleSwitcherOpen(false);
+            setSidebarOpen(false);
+            if (targetPath) {
+                navigate(targetPath);
+            }
+        } catch (error) {
+            toast.error(error?.message || 'Failed to switch role');
+        } finally {
+            setSwitchingRole('');
+        }
     };
 
     return (
@@ -136,7 +259,7 @@ export function DashboardLayout({ children }) {
                             </div>
                             <div className="overflow-hidden">
                                 <div className="font-medium text-sm truncate">{user?.displayName || 'User'}</div>
-                                <div className="text-xs text-neutral-500 capitalize">{role} Account</div>
+                                <div className="text-xs text-neutral-500 capitalize">{activeRole} Account</div>
                             </div>
                         </div>
 
@@ -149,7 +272,10 @@ export function DashboardLayout({ children }) {
                                     <Link
                                         key={item.href}
                                         to={item.href}
-                                        onClick={() => setSidebarOpen(false)}
+                                        onClick={() => {
+                                            setRoleSwitcherOpen(false);
+                                            setSidebarOpen(false);
+                                        }}
                                         className={`
                                             group flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
                                             relative overflow-hidden
@@ -170,12 +296,56 @@ export function DashboardLayout({ children }) {
 
                     {/* Footer Actions */}
                     <div className="p-4 border-t border-white/[0.08] bg-black/20">
-                        <div className="flex items-center justify-between px-4 py-3 rounded-lg text-xs font-medium text-neutral-400 border border-white/[0.05] mb-2">
-                            <span className="flex items-center gap-2">
-                                <Zap className="w-3.5 h-3.5" />
-                                {role === 'admin' ? 'Admin Account' : role === 'initiator' ? 'Initiator Account' : 'Contributor Account'}
-                            </span>
-                            <ChevronRight className="w-3 h-3 opacity-50" />
+                        <div className="relative mb-2" ref={roleSwitcherRef}>
+                            <button
+                                type="button"
+                                onClick={() => setRoleSwitcherOpen((current) => !current)}
+                                disabled={Boolean(switchingRole)}
+                                className="w-full flex items-center justify-between px-4 py-3 rounded-lg text-xs font-medium text-neutral-300 border border-white/[0.08] hover:bg-white/[0.03] transition-colors"
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Zap className="w-3.5 h-3.5" />
+                                    {roleMeta[activeRole]?.accountLabel || 'Account'}
+                                </span>
+                                <ChevronRight className={`w-3 h-3 opacity-60 transition-transform ${roleSwitcherOpen ? 'rotate-90' : ''}`} />
+                            </button>
+
+                            {roleSwitcherOpen && (
+                                <div className="absolute bottom-full mb-2 left-0 right-0 rounded-lg border border-white/[0.08] bg-[#0A0A0A] shadow-lg overflow-hidden z-50">
+                                    {visibleRoleOptions.map((roleKey) => {
+                                        const isCurrent = activeRole === roleKey;
+                                        const isAvailable = (roleCapabilities.availableRoles || []).includes(roleKey);
+                                        const disabledReason = roleCapabilities.disabledRoles?.[roleKey];
+                                        const isSwitching = switchingRole === roleKey;
+                                        return (
+                                            <button
+                                                key={roleKey}
+                                                type="button"
+                                                onClick={() => handleRoleSwitch(roleKey)}
+                                                disabled={!isAvailable || Boolean(switchingRole)}
+                                                title={!isAvailable && disabledReason ? disabledReason : undefined}
+                                                className={`w-full text-left px-3 py-2.5 border-b last:border-b-0 border-white/[0.06] transition-colors ${
+                                                    isCurrent
+                                                        ? 'bg-white text-black'
+                                                        : isAvailable
+                                                            ? 'text-neutral-200 hover:bg-white/[0.06]'
+                                                            : 'text-neutral-600 cursor-not-allowed'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-semibold">
+                                                        {isSwitching ? `Switching to ${roleMeta[roleKey].label}...` : roleMeta[roleKey].label}
+                                                    </span>
+                                                    {isCurrent && <span className="text-[10px] font-medium">Current</span>}
+                                                </div>
+                                                {!isAvailable && disabledReason && (
+                                                    <div className="text-[10px] mt-1 opacity-80">{disabledReason}</div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         <div className="text-[10px] text-neutral-600 px-4 text-center font-mono mt-2">
