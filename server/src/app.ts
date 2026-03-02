@@ -28,6 +28,7 @@ import { escrowRoutes } from './modules/escrow/index.js';
 import { walletRoutes } from './modules/wallet/index.js';
 import { leadsRoutes } from './modules/leads/index.js';
 import { supportRoutes, internalSupportRoutes } from './modules/support/index.js';
+import { searchRoutes } from './modules/search/index.js';
 
 const app: Express = express();
 
@@ -81,7 +82,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
             'users', 'contributors', 'missions', 'proposals', 'contracts',
             'payments', 'withdrawals', 'matching', 'disputes', 'invoices',
             'teams', 'portfolio', 'favorites', 'reviews', 'notifications',
-            'escrow', 'wallet', 'leads', 'messages', 'support'
+            'escrow', 'wallet', 'leads', 'messages', 'support', 'search',
         ],
     });
 });
@@ -96,6 +97,7 @@ app.use('/api/v1/conversations', messagesRoutes);
 app.use('/api/v1/reviews', reviewsRoutes);
 app.use('/api/v1/contact', contactRoutes);
 app.use('/api/v1/support', supportRoutes);
+app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/internal/support', internalSupportRoutes);
 app.use('/api/v1/leads', leadsRoutes);
 app.use('/api/v1/auth/otp', otpLimiter, otpRoutes);
