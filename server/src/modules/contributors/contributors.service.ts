@@ -123,6 +123,10 @@ export const getPublicContributors = async (
     const userEntries = await Promise.all(
         contributors.map(async (contributor) => {
             const userId = contributor.userId || contributor.id || '';
+            if (!userId) {
+                return [userId, { fullName: 'Unknown' }] as const;
+            }
+
             const userDoc = await db.collection(USERS_COLLECTION).doc(userId).get();
 
             return [
@@ -138,7 +142,7 @@ export const getPublicContributors = async (
     const userMap = Object.fromEntries(userEntries);
 
     return contributors.map((contributor) => {
-        const userId = contributor.userId || contributor.id || '';
+        const userId = contributor.userId || contributor.id || 'unknown-contributor';
         const user = userMap[userId] || { fullName: 'Unknown' };
         return {
             id: contributor.id || userId,
