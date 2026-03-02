@@ -1,17 +1,28 @@
 // Disputes Module - Routes
 
 import { Router } from 'express';
-import { requireAuth } from '../../middleware/auth.js';
+import { requireAuth, requireRole } from '../../middleware/auth.js';
 import * as disputesService from './disputes.service.js';
+import { db } from '../../config/firebase.js';
 
 const router = Router();
+const USERS_COLLECTION = 'users';
 
 // Create a dispute
 router.post('/', requireAuth, async (req, res) => {
     try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+
+        const userDoc = await db.collection(USERS_COLLECTION).doc(uid).get();
+        const creatorName = userDoc.exists ? userDoc.data()?.fullName || 'User' : 'User';
+
         const dispute = await disputesService.createDispute(
-            req.user!.uid,
-            req.user!.name || 'User',
+            uid,
+            creatorName,
             req.body
         );
 
@@ -44,7 +55,7 @@ router.get('/:id', requireAuth, async (req, res) => {
         // Verify user is involved or admin
         if (dispute.raisedBy !== req.user!.uid &&
             dispute.against !== req.user!.uid &&
-            req.user!.role !== 'admin') {
+            req.userRole !== 'admin') {
             res.status(403).json({ error: 'Access denied' });
             return;
         }
@@ -101,9 +112,8 @@ router.post('/:id/escalate', requireAuth, async (req, res) => {
 });
 
 // Admin: Get all disputes
-router.get('/admin/all', requireAuth, async (req, res) => {
+router.get('/admin/all', requireAuth, requireRole(['admin']), async (req, res) => {
     try {
-        // TODO: Add admin check
         const status = req.query.status as string | undefined;
         const limit = parseInt(req.query.limit as string) || 50;
 
@@ -115,9 +125,8 @@ router.get('/admin/all', requireAuth, async (req, res) => {
 });
 
 // Admin: Resolve dispute
-router.post('/:id/resolve', requireAuth, async (req, res) => {
+router.post('/:id/resolve', requireAuth, requireRole(['admin']), async (req, res) => {
     try {
-        // TODO: Add admin check
         const { resolution, notes } = req.body;
 
         const dispute = await disputesService.resolveDispute(
