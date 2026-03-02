@@ -48,8 +48,8 @@ export default function MessagesPage() {
             const response = await api.get('/api/v1/conversations');
             setConversations(response.data?.conversations || []);
         } catch (error) {
-            console.error('Failed to fetch conversations:', error);
-            toast.error('Failed to load conversations');
+            console.warn('Conversations unavailable, showing empty state:', error);
+            setConversations([]);
         } finally {
             setLoading(false);
         }
