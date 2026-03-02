@@ -6,6 +6,12 @@ const USERS_COLLECTION = 'users';
 const CONTRIBUTOR_PROFILES_COLLECTION = 'contributorProfiles';
 const INITIATOR_PROFILES_COLLECTION = 'initiatorProfiles';
 
+const stripUndefinedFields = <T extends Record<string, unknown>>(payload: T): Partial<T> => {
+    return Object.fromEntries(
+        Object.entries(payload).filter(([, value]) => value !== undefined)
+    ) as Partial<T>;
+};
+
 /**
  * Create a new user and their role-specific profile
  */
@@ -113,10 +119,11 @@ export const updateUser = async (
     uid: string,
     data: Partial<User>
 ): Promise<void> => {
-    await db.collection(USERS_COLLECTION).doc(uid).update({
-        ...data,
+    const sanitized = stripUndefinedFields(data as Record<string, unknown>);
+    await db.collection(USERS_COLLECTION).doc(uid).set({
+        ...sanitized,
         updatedAt: new Date(),
-    });
+    }, { merge: true });
 };
 
 /**
