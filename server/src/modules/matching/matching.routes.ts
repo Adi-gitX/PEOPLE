@@ -9,6 +9,46 @@ import {
 
 const router = Router();
 
+router.post('/missions/:missionId/run', requireAuth, async (req, res) => {
+    try {
+        const options = {
+            limit: req.body.limit || 20,
+            minimumScore: req.body.minimumScore || 30,
+            strictBudget: req.body.strictBudget || false,
+            diversityBoost: req.body.diversityBoost ?? true,
+        };
+        const result = await matchingService.runMissionMatching(req.params.missionId, options);
+        res.json({
+            success: true,
+            missionId: req.params.missionId,
+            source: result.source,
+            computedAt: result.computedAt,
+            expiresAt: result.expiresAt,
+            matches: result.matches,
+            count: result.matches.length,
+        });
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+router.get('/missions/:missionId/results', requireAuth, async (req, res) => {
+    try {
+        const result = await matchingService.getMissionMatchingResults(req.params.missionId);
+        res.json({
+            success: true,
+            missionId: req.params.missionId,
+            source: result.source,
+            computedAt: result.computedAt,
+            expiresAt: result.expiresAt,
+            matches: result.matches,
+            count: result.matches.length,
+        });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ─── Get Matches for a Mission ───────────────────────────────────────────────
 router.get('/mission/:missionId', requireAuth, async (req, res) => {
     try {
