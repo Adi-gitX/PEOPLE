@@ -29,11 +29,12 @@ export default function MissionExplorePage() {
     const location = useLocation();
     const { isAuthenticated, role } = useAuthStore();
     const isDashboardRoute = location.pathname.startsWith('/dashboard/');
+    const fallbackWorkspaceRole = role === 'initiator' ? 'initiator' : 'contributor';
     const scopedRole = location.pathname.startsWith('/dashboard/initiator')
         ? 'initiator'
         : location.pathname.startsWith('/dashboard/contributor')
             ? 'contributor'
-            : role;
+            : fallbackWorkspaceRole;
     const useDashboardLayout = isDashboardRoute || (isAuthenticated && (scopedRole === 'contributor' || scopedRole === 'initiator'));
     const Layout = useDashboardLayout ? DashboardLayout : PublicLayout;
     const missionDetailsPathPrefix = useDashboardLayout
