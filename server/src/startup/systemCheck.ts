@@ -15,6 +15,7 @@ const OPTIONAL_KEYS = [
     'RAZORPAY_KEY_SECRET',
     'RAZORPAY_WEBHOOK_SECRET',
     'RESEND_API_KEY',
+    'POSTMARK_SERVER_TOKEN',
     'GMAIL_USER',
     'GMAIL_APP_PASSWORD',
 ] as const;
@@ -94,22 +95,25 @@ export const runSystemCheck = async (context: { mode: 'preflight' | 'runtime'; p
         });
     });
 
-    const supportEnvChecks: Array<{ label: string; value: unknown }> = [
-        { label: 'ENV SMTP_HOST', value: env.SMTP_HOST },
-        { label: 'ENV SMTP_USER', value: env.SMTP_USER },
-        { label: 'ENV SMTP_PASS', value: env.SMTP_PASS },
-        { label: 'ENV SMTP_FROM_EMAIL', value: env.SMTP_FROM_EMAIL },
-        { label: 'ENV SUPPORT_INBOX_EMAIL', value: env.SUPPORT_INBOX_EMAIL },
+    const supportEnvChecks: Array<{ label: string; value: unknown; requiredInProd?: boolean }> = [
+        { label: 'ENV SMTP_HOST', value: env.SMTP_HOST, requiredInProd: !env.POSTMARK_SERVER_TOKEN },
+        { label: 'ENV SMTP_USER', value: env.SMTP_USER, requiredInProd: !env.POSTMARK_SERVER_TOKEN },
+        { label: 'ENV SMTP_PASS', value: env.SMTP_PASS, requiredInProd: !env.POSTMARK_SERVER_TOKEN },
+        { label: 'ENV SMTP_FROM_EMAIL', value: env.SMTP_FROM_EMAIL, requiredInProd: true },
+        { label: 'ENV POSTMARK_SERVER_TOKEN', value: env.POSTMARK_SERVER_TOKEN, requiredInProd: false },
+        { label: 'ENV AUTH_EMAIL_REPLY_TO', value: env.AUTH_EMAIL_REPLY_TO, requiredInProd: false },
+        { label: 'ENV SUPPORT_INBOX_EMAIL', value: env.SUPPORT_INBOX_EMAIL, requiredInProd: true },
     ];
 
     supportEnvChecks.forEach((entry) => {
         const configured = Boolean(entry.value);
+        const requiredInProd = entry.requiredInProd ?? true;
         results.push({
             label: entry.label,
-            ok: productionMode ? configured : true,
+            ok: productionMode ? (requiredInProd ? configured : true) : true,
             detail: configured
                 ? 'configured'
-                : productionMode
+                : productionMode && requiredInProd
                     ? 'missing (required in production)'
                     : 'not set (optional in non-production)',
         });
@@ -118,6 +122,21 @@ export const runSystemCheck = async (context: { mode: 'preflight' | 'runtime'; p
     const origins = parseOrigins(env.FRONTEND_URL);
     results.push(checkOrigins(origins));
     results.push(await checkFirebase());
+
+    const hasTransactionalProvider = Boolean(
+        env.POSTMARK_SERVER_TOKEN
+        || (env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS)
+    );
+
+    results.push({
+        label: 'Auth Email Provider',
+        ok: productionMode ? hasTransactionalProvider : true,
+        detail: hasTransactionalProvider
+            ? (env.POSTMARK_SERVER_TOKEN ? 'postmark smtp configured' : 'custom smtp configured')
+            : productionMode
+                ? 'missing (required in production)'
+                : 'not configured (development mode)',
+    });
 
     if (isSupportEmailConfigured()) {
         const smtpCheck = await verifySmtpTransport();
