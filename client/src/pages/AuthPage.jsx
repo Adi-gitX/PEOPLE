@@ -66,7 +66,7 @@ export default function AuthPage() {
                     ) : (
                         <div className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-white/10 bg-zinc-900 text-sm text-zinc-300">
                             <Sparkles className="w-4 h-4" />
-                            Email OTP (Magic Link) Signup
+                            Email OTP Signup
                         </div>
                     )}
 
