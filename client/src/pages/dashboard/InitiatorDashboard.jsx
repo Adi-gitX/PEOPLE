@@ -1,21 +1,80 @@
+import { useEffect, useMemo, useState } from 'react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Button } from '../../components/ui/Button';
 import { Plus, Clock, CheckCircle2, AlertCircle, Users, Wallet, Target, Loader2, MessageSquare, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useMyMissions } from '../../hooks/useApi';
+import { api } from '../../lib/api';
+import { toast } from 'sonner';
 
 export default function InitiatorDashboard() {
     const { user } = useAuthStore();
     const { data: missions, loading } = useMyMissions();
+    const [selectedMissionId, setSelectedMissionId] = useState('');
+    const [matchPayload, setMatchPayload] = useState(null);
+    const [matchesLoading, setMatchesLoading] = useState(false);
 
 
-    const activeMissions = missions?.filter(m => m.status === 'in_progress') || [];
-    const draftMissions = missions?.filter(m => m.status === 'draft') || [];
-    const allMissions = missions || [];
+    const allMissions = useMemo(() => missions || [], [missions]);
+    const activeMissions = useMemo(
+        () => allMissions.filter((mission) => mission.status === 'in_progress'),
+        [allMissions]
+    );
+    const draftMissions = useMemo(
+        () => allMissions.filter((mission) => mission.status === 'draft'),
+        [allMissions]
+    );
+    const matchEligibleMissions = useMemo(
+        () => allMissions.filter((mission) => ['open', 'matching', 'in_progress'].includes(mission.status)),
+        [allMissions]
+    );
 
     const totalEscrowed = allMissions.reduce((sum, m) => sum + (m.budgetMax || 0), 0);
     const totalContributors = allMissions.reduce((sum, m) => sum + (m.assignments?.length || 0), 0);
+
+    useEffect(() => {
+        if (!selectedMissionId && matchEligibleMissions.length > 0) {
+            setSelectedMissionId(matchEligibleMissions[0].id);
+        }
+    }, [matchEligibleMissions, selectedMissionId]);
+
+    useEffect(() => {
+        if (!selectedMissionId) return;
+
+        const loadMatches = async () => {
+            setMatchesLoading(true);
+            try {
+                const response = await api.get(`/api/v1/matching/missions/${selectedMissionId}/results`);
+                const payload = response.data || response;
+                setMatchPayload(payload);
+            } catch {
+                setMatchPayload(null);
+            } finally {
+                setMatchesLoading(false);
+            }
+        };
+
+        loadMatches();
+    }, [selectedMissionId]);
+
+    const refreshMatches = async () => {
+        if (!selectedMissionId) return;
+        setMatchesLoading(true);
+        try {
+            const response = await api.post(`/api/v1/matching/missions/${selectedMissionId}/run`, {
+                limit: 10,
+                minimumScore: 30,
+            });
+            const payload = response.data || response;
+            setMatchPayload(payload);
+            toast.success('Match list refreshed');
+        } catch (error) {
+            toast.error(error.message || 'Failed to refresh matches');
+        } finally {
+            setMatchesLoading(false);
+        }
+    };
 
     return (
         <DashboardLayout>
@@ -26,7 +85,7 @@ export default function InitiatorDashboard() {
                     </h1>
                     <p className="text-lg text-muted-foreground">Orchestrate your active problems and teams.</p>
                 </div>
-                <Link to="/missions/new">
+                <Link to="/dashboard/initiator/missions/new">
                     <Button className="bg-white text-black hover:bg-white/90 h-12 px-6 rounded-lg font-semibold shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                         <Plus className="w-5 h-5 mr-2" />
                         Start New Mission
@@ -75,6 +134,78 @@ export default function InitiatorDashboard() {
                 </div>
             </div>
 
+            <div className="rounded-xl border border-white/[0.08] bg-[#0A0A0A] p-6 mb-10">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 className="font-bold tracking-tight text-white text-lg">AI Best Contributor Matches</h3>
+                        <p className="text-xs text-zinc-500">Mission-fit rankings with percentage scores</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={refreshMatches}
+                        disabled={matchesLoading || !selectedMissionId}
+                        className="px-3 py-2 rounded-lg border border-white/10 text-xs hover:bg-white/5 disabled:opacity-50"
+                    >
+                        {matchesLoading ? 'Loading...' : 'Refresh'}
+                    </button>
+                </div>
+
+                {matchEligibleMissions.length > 0 && (
+                    <div className="mb-4">
+                        <label className="text-xs text-zinc-500 block mb-1">Mission</label>
+                        <select
+                            value={selectedMissionId}
+                            onChange={(event) => setSelectedMissionId(event.target.value)}
+                            className="w-full md:w-[360px] bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                        >
+                            {matchEligibleMissions.map((mission) => (
+                                <option key={mission.id} value={mission.id}>
+                                    {mission.title}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {matchEligibleMissions.length === 0 ? (
+                    <p className="text-sm text-zinc-500">Create and publish a mission to see ranked contributors.</p>
+                ) : matchesLoading ? (
+                    <p className="text-sm text-zinc-500">Loading ranked contributors...</p>
+                ) : !(matchPayload?.matches || []).length ? (
+                    <p className="text-sm text-zinc-500">No ranked matches available yet for this mission.</p>
+                ) : (
+                    <>
+                        <div className="grid md:grid-cols-2 gap-3">
+                            {(matchPayload.matches || []).slice(0, 6).map((match) => (
+                                <div key={match.contributorId} className="rounded-lg border border-white/10 bg-black/40 p-3">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm font-medium text-white truncate">{match.contributorName || match.contributorId}</p>
+                                        <span className="text-xs font-mono text-green-400">{match.overallScore}%</span>
+                                    </div>
+                                    <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                        <div
+                                            className="h-full bg-green-500"
+                                            style={{ width: `${Math.min(100, Math.max(0, match.overallScore || 0))}%` }}
+                                        />
+                                    </div>
+                                    <div className="mt-2 text-[11px] text-zinc-500">
+                                        Skills {match.skillScore}% · Trust {match.trustScore}% · Availability {match.availabilityScore}%
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-3 text-[11px] text-zinc-500">
+                            {matchPayload.computedAt && (
+                                <span>Computed: {new Date(matchPayload.computedAt).toLocaleString()} · </span>
+                            )}
+                            {matchPayload.expiresAt && (
+                                <span>Refresh by: {new Date(matchPayload.expiresAt).toLocaleString()}</span>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+
 
             <div className="rounded-xl border border-white/[0.08] bg-[#0A0A0A] overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="p-6 border-b border-white/[0.08] flex items-center justify-between bg-black/20">
@@ -92,7 +223,7 @@ export default function InitiatorDashboard() {
                         </div>
                         <h4 className="text-lg font-medium text-white mb-2">No missions yet</h4>
                         <p className="text-zinc-500 mb-6">Create your first mission to get started</p>
-                        <Link to="/missions/new">
+                        <Link to="/dashboard/initiator/missions/new">
                             <Button>
                                 <Plus className="w-4 h-4 mr-2" />
                                 Create Mission
@@ -133,12 +264,12 @@ export default function InitiatorDashboard() {
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    <Link to={`/missions/${mission.id}/applications`}>
+                                    <Link to={`/dashboard/initiator/missions/${mission.id}/applications`}>
                                         <Button variant="outline" size="sm" className="hidden md:flex border-white/10 hover:bg-white/10 h-9">
                                             Applications
                                         </Button>
                                     </Link>
-                                    <Link to={`/missions/${mission.id}`}>
+                                    <Link to={`/dashboard/initiator/missions/${mission.id}`}>
                                         <Button variant="outline" size="sm" className="hidden md:flex border-white/10 hover:bg-white/10 h-9">
                                             View
                                         </Button>
@@ -155,28 +286,28 @@ export default function InitiatorDashboard() {
             <div className="mt-10">
                 <h3 className="text-lg font-bold text-white mb-4 tracking-tight">Quick Actions</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Link to="/missions/new" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                    <Link to="/dashboard/initiator/missions/new" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
                         <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3 group-hover:bg-blue-500/20 transition-colors">
                             <Plus className="w-5 h-5 text-blue-400" />
                         </div>
                         <div className="font-medium text-white text-sm">Create Mission</div>
                         <div className="text-xs text-neutral-500 mt-1">Post a new project</div>
                     </Link>
-                    <Link to="/network" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                    <Link to="/dashboard/initiator/network" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
                         <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3 group-hover:bg-purple-500/20 transition-colors">
                             <UserPlus className="w-5 h-5 text-purple-400" />
                         </div>
                         <div className="font-medium text-white text-sm">Find Talent</div>
                         <div className="text-xs text-neutral-500 mt-1">Browse contributors</div>
                     </Link>
-                    <Link to="/messages" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                    <Link to="/dashboard/initiator/messages" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
                         <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center mb-3 group-hover:bg-green-500/20 transition-colors">
                             <MessageSquare className="w-5 h-5 text-green-400" />
                         </div>
                         <div className="font-medium text-white text-sm">Messages</div>
                         <div className="text-xs text-neutral-500 mt-1">Chat with contributors</div>
                     </Link>
-                    <Link to="/wallet" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
+                    <Link to="/dashboard/initiator/wallet" className="p-4 rounded-xl border border-white/[0.08] bg-[#0A0A0A] hover:border-white/20 transition-all group">
                         <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-3 group-hover:bg-orange-500/20 transition-colors">
                             <Wallet className="w-5 h-5 text-orange-400" />
                         </div>
