@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 export function Navbar() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { isAuthenticated, user, role, logout, switchActiveRole } = useAuthStore();
+    const { isAuthenticated, user, role, adminAccess, logout, switchActiveRole } = useAuthStore();
     const [showDropdown, setShowDropdown] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [switchingRole, setSwitchingRole] = useState('');
@@ -30,10 +30,15 @@ export function Navbar() {
         location.pathname.includes('/missions/new');
 
     const roleCapabilities = useMemo(() => {
-        const currentRole = role || 'contributor';
+        const currentRole = role === 'admin'
+            ? (adminAccess ? 'admin' : 'contributor')
+            : (role === 'initiator' ? 'initiator' : 'contributor');
+        const defaultAvailableRoles = currentRole === 'admin'
+            ? ['admin']
+            : ['contributor', 'initiator'];
         const fallback = {
             currentRole,
-            availableRoles: [currentRole],
+            availableRoles: defaultAvailableRoles,
             routes: {
                 contributor: '/dashboard/contributor',
                 initiator: '/dashboard/initiator',
@@ -55,7 +60,7 @@ export function Navbar() {
             routes: capabilityData.routes || fallback.routes,
             disabledRoles: capabilityData.disabledRoles || fallback.disabledRoles,
         };
-    }, [capabilityData, role]);
+    }, [capabilityData, role, adminAccess]);
 
     const isInitiator = roleCapabilities.currentRole === 'initiator';
     const isContributor = roleCapabilities.currentRole === 'contributor';

@@ -110,10 +110,15 @@ export function DashboardLayout({ children }) {
     }, [roleSwitcherOpen]);
 
     const roleCapabilities = useMemo(() => {
-        const currentRole = role || 'contributor';
+        const currentRole = role === 'admin'
+            ? (adminAccess ? 'admin' : 'contributor')
+            : (role === 'initiator' ? 'initiator' : 'contributor');
+        const defaultAvailableRoles = currentRole === 'admin'
+            ? ['admin']
+            : ['contributor', 'initiator'];
         const fallback = {
             currentRole,
-            availableRoles: [currentRole],
+            availableRoles: defaultAvailableRoles,
             routes: {
                 contributor: '/dashboard/contributor',
                 initiator: '/dashboard/initiator',
@@ -136,7 +141,7 @@ export function DashboardLayout({ children }) {
             routes: capabilityData.routes || fallback.routes,
             disabledRoles: capabilityData.disabledRoles || fallback.disabledRoles,
         };
-    }, [capabilityData, role]);
+    }, [capabilityData, role, adminAccess]);
 
     const activeRole = useMemo(() => {
         const routeRole = location.pathname.startsWith('/admin')
