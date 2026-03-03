@@ -65,6 +65,18 @@ const sanitizeSearch = (value: string | undefined): string => {
     return (value || '').trim().toLowerCase();
 };
 
+const isFirestoreIndexError = (error: unknown): boolean => {
+    if (!(error instanceof Error)) return false;
+    const code = (error as { code?: unknown }).code;
+    const message = error.message.toLowerCase();
+    return (
+        code === 9
+        || code === 'failed-precondition'
+        || message.includes('requires an index')
+        || message.includes('failed precondition')
+    );
+};
+
 const getAuthUserOrNull = async (uid: string): Promise<Awaited<ReturnType<typeof auth.getUser>> | null> => {
     try {
         return await auth.getUser(uid);
@@ -412,7 +424,7 @@ export interface AdminAuditLogInput {
 
 export const writeAdminAuditLog = async (input: AdminAuditLogInput): Promise<void> => {
     const now = new Date();
-    const logRecord: Omit<AdminAuditLog, 'id'> = {
+    const logRecord = stripUndefined({
         actorId: input.actorId,
         actorType: 'admin',
         scope: input.scope,
@@ -420,10 +432,10 @@ export const writeAdminAuditLog = async (input: AdminAuditLogInput): Promise<voi
         resourceType: input.resourceType,
         resourceId: input.resourceId,
         reason: input.reason,
-        metadata: input.metadata || {},
+        metadata: stripUndefinedDeep(input.metadata || {}) as Record<string, unknown>,
         createdAt: now,
         updatedAt: now,
-    };
+    }) as Omit<AdminAuditLog, 'id'>;
 
     await db.collection(ADMIN_AUDIT_LOGS_COLLECTION).add(logRecord);
 };
@@ -432,6 +444,24 @@ const stripUndefined = <T extends Record<string, unknown>>(payload: T): Partial<
     return Object.fromEntries(
         Object.entries(payload).filter(([, value]) => value !== undefined)
     ) as Partial<T>;
+};
+
+const stripUndefinedDeep = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => stripUndefinedDeep(item))
+            .filter((item) => item !== undefined);
+    }
+
+    if (value && typeof value === 'object' && !(value instanceof Date)) {
+        return Object.fromEntries(
+            Object.entries(value as Record<string, unknown>)
+                .map(([key, nested]) => [key, stripUndefinedDeep(nested)])
+                .filter(([, nested]) => nested !== undefined)
+        );
+    }
+
+    return value;
 };
 
 const normalizePersistedScopes = (adminType: AdminType, scopes: AdminScope[] | undefined): AdminScope[] => {
@@ -522,22 +552,52 @@ export const listAdminUsers = async (options: {
     const limit = clamp(options.limit || 30, 1, 100);
     const search = sanitizeSearch(options.q);
 
-    let query: FirebaseFirestore.Query = db
-        .collection(USERS_COLLECTION)
-        .where('primaryRole', '==', 'admin')
-        .orderBy('createdAt', 'desc')
-        .limit(limit * 4);
+    let userDocs: FirebaseFirestore.QueryDocumentSnapshot[];
+    try {
+        let query: FirebaseFirestore.Query = db
+            .collection(USERS_COLLECTION)
+            .where('primaryRole', '==', 'admin')
+            .orderBy('createdAt', 'desc')
+            .limit(limit * 4);
 
-    if (options.cursor) {
-        const cursorDoc = await db.collection(USERS_COLLECTION).doc(options.cursor).get();
-        if (cursorDoc.exists) {
-            query = query.startAfter(cursorDoc);
+        if (options.cursor) {
+            const cursorDoc = await db.collection(USERS_COLLECTION).doc(options.cursor).get();
+            if (cursorDoc.exists) {
+                query = query.startAfter(cursorDoc);
+            }
         }
+
+        const snapshot = await query.get();
+        userDocs = snapshot.docs;
+    } catch (error) {
+        if (!isFirestoreIndexError(error)) {
+            throw error;
+        }
+
+        const fallbackSnapshot = await db
+            .collection(USERS_COLLECTION)
+            .where('primaryRole', '==', 'admin')
+            .limit(limit * 10)
+            .get();
+
+        const sortedDocs = fallbackSnapshot.docs.sort((a, b) => {
+            const aTime = toDate(a.data().createdAt)?.getTime() || 0;
+            const bTime = toDate(b.data().createdAt)?.getTime() || 0;
+            return bTime - aTime;
+        });
+
+        const startIndex = options.cursor
+            ? sortedDocs.findIndex((doc) => doc.id === options.cursor)
+            : -1;
+        const pagedDocs = startIndex >= 0
+            ? sortedDocs.slice(startIndex + 1, startIndex + 1 + (limit * 4))
+            : sortedDocs.slice(0, limit * 4);
+
+        userDocs = pagedDocs;
     }
 
-    const snapshot = await query.get();
     const rows = await Promise.all(
-        snapshot.docs.map((doc) => getAdminUserItemByUid(doc.id))
+        userDocs.map((doc) => getAdminUserItemByUid(doc.id))
     );
 
     const filtered = rows
