@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { requireAuth } from '../../middleware/auth.js';
 import * as matchingService from './matching.service.js';
+import { db } from '../../config/firebase.js';
+import type { Mission } from '../../types/firestore.js';
 import {
     generateMatchExplanation,
     analyzeSkillGaps,
@@ -8,9 +10,36 @@ import {
 } from './advanced.js';
 
 const router = Router();
+const MISSIONS_COLLECTION = 'missions';
+
+const getMissionForAccessCheck = async (missionId: string): Promise<(Mission & { id: string }) | null> => {
+    const missionDoc = await db.collection(MISSIONS_COLLECTION).doc(missionId).get();
+    if (!missionDoc.exists) return null;
+    return { id: missionDoc.id, ...missionDoc.data() } as Mission & { id: string };
+};
+
+const canAccessMissionMatching = (uid: string, userRole: string | undefined, mission: Mission): boolean => {
+    if (userRole === 'admin') return true;
+    return mission.initiatorId === uid;
+};
 
 router.post('/missions/:missionId/run', requireAuth, async (req, res) => {
     try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+        const mission = await getMissionForAccessCheck(req.params.missionId);
+        if (!mission) {
+            res.status(404).json({ error: 'Mission not found' });
+            return;
+        }
+        if (!canAccessMissionMatching(uid, req.userRole, mission)) {
+            res.status(403).json({ error: 'Not authorized to run matching for this mission' });
+            return;
+        }
+
         const options = {
             limit: req.body.limit || 20,
             minimumScore: req.body.minimumScore || 30,
@@ -34,6 +63,21 @@ router.post('/missions/:missionId/run', requireAuth, async (req, res) => {
 
 router.get('/missions/:missionId/results', requireAuth, async (req, res) => {
     try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+        const mission = await getMissionForAccessCheck(req.params.missionId);
+        if (!mission) {
+            res.status(404).json({ error: 'Mission not found' });
+            return;
+        }
+        if (!canAccessMissionMatching(uid, req.userRole, mission)) {
+            res.status(403).json({ error: 'Not authorized to access matching results for this mission' });
+            return;
+        }
+
         const result = await matchingService.getMissionMatchingResults(req.params.missionId);
         res.json({
             success: true,
@@ -52,6 +96,21 @@ router.get('/missions/:missionId/results', requireAuth, async (req, res) => {
 // ─── Get Matches for a Mission ───────────────────────────────────────────────
 router.get('/mission/:missionId', requireAuth, async (req, res) => {
     try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+        const mission = await getMissionForAccessCheck(req.params.missionId);
+        if (!mission) {
+            res.status(404).json({ error: 'Mission not found' });
+            return;
+        }
+        if (!canAccessMissionMatching(uid, req.userRole, mission)) {
+            res.status(403).json({ error: 'Not authorized to access mission matches' });
+            return;
+        }
+
         const matches = await matchingService.getMatchesForMission(req.params.missionId);
         res.json({ matches, count: matches.length });
     } catch (error: any) {
@@ -62,6 +121,21 @@ router.get('/mission/:missionId', requireAuth, async (req, res) => {
 // ─── Trigger Matching for a Mission ──────────────────────────────────────────
 router.post('/mission/:missionId/refresh', requireAuth, async (req, res) => {
     try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+        const mission = await getMissionForAccessCheck(req.params.missionId);
+        if (!mission) {
+            res.status(404).json({ error: 'Mission not found' });
+            return;
+        }
+        if (!canAccessMissionMatching(uid, req.userRole, mission)) {
+            res.status(403).json({ error: 'Not authorized to refresh mission matches' });
+            return;
+        }
+
         const options = {
             limit: req.body.limit || 20,
             minimumScore: req.body.minimumScore || 30,
@@ -111,6 +185,16 @@ router.get('/recommendations', requireAuth, async (req, res) => {
 // ─── Get Recommendations for Specific Contributor ────────────────────────────
 router.get('/contributor/:contributorId/recommendations', requireAuth, async (req, res) => {
     try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+        if (req.userRole !== 'admin' && uid !== req.params.contributorId) {
+            res.status(403).json({ error: 'Not authorized to access these recommendations' });
+            return;
+        }
+
         const limit = parseInt(req.query.limit as string) || 10;
         const recommendations = await matchingService.getMissionRecommendations(
             req.params.contributorId,
@@ -181,8 +265,6 @@ router.post('/skill-gaps', requireAuth, async (req, res) => {
             return;
         }
 
-        const { db } = await import('../../config/firebase.js');
-
         // Get mission
         const missionDoc = await db.collection('missions').doc(missionId).get();
         if (!missionDoc.exists) {
@@ -230,8 +312,6 @@ router.post('/skill-gaps', requireAuth, async (req, res) => {
 // ─── Get Match Statistics ────────────────────────────────────────────────────
 router.get('/stats', requireAuth, async (req, res) => {
     try {
-        const { db } = await import('../../config/firebase.js');
-
         // Get contributor stats
         const contributorDoc = await db.collection('contributorProfiles').doc(req.user!.uid).get();
         if (!contributorDoc.exists) {

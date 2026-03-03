@@ -26,6 +26,15 @@ const SKILLS_COLLECTION = 'skills';
 const MATCHING_SNAPSHOTS_COLLECTION = 'matchingSnapshots';
 const MATCHING_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
+const deterministicScoreBump = (seed: string): number => {
+    let hash = 0;
+    for (let index = 0; index < seed.length; index += 1) {
+        hash = ((hash << 5) - hash) + seed.charCodeAt(index);
+        hash |= 0;
+    }
+    return Math.abs(hash) % 3;
+};
+
 // ─── Skill Name Cache ────────────────────────────────────────────────────────
 
 let skillNameCache: Record<string, string> = {};
@@ -233,12 +242,17 @@ export const matchContributorsToMission = async (
     if (options.diversityBoost) {
         matches = matches.map(m => ({
             ...m,
-            overallScore: m.overallScore + Math.floor(Math.random() * 3),
+            overallScore: m.overallScore + deterministicScoreBump(`${mission.id || missionId}:${m.contributorId}`),
         }));
     }
 
     // Sort
-    matches.sort((a, b) => b.overallScore - a.overallScore);
+    matches.sort((a, b) => {
+        if (b.overallScore !== a.overallScore) return b.overallScore - a.overallScore;
+        if (b.trustScore !== a.trustScore) return b.trustScore - a.trustScore;
+        if (b.skillScore !== a.skillScore) return b.skillScore - a.skillScore;
+        return a.contributorId.localeCompare(b.contributorId);
+    });
 
     // Assign ranks
     matches.forEach((m, i) => {
