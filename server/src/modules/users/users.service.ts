@@ -121,6 +121,10 @@ const resolveAvailableRoles = (
     profiles: UserProfilesBundle,
     isAdminActive: boolean
 ): SystemRole[] => {
+    if (user.primaryRole === 'admin') {
+        return isAdminActive ? ['admin'] : [];
+    }
+
     const roles: SystemRole[] = [];
 
     if (profiles.contributor) {
@@ -129,10 +133,6 @@ const resolveAvailableRoles = (
     if (profiles.initiator) {
         roles.push('initiator');
     }
-    if (user.primaryRole === 'admin' && isAdminActive) {
-        roles.push('admin');
-    }
-
     if (roles.length === 0) {
         roles.push(user.primaryRole);
     }
