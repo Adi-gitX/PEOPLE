@@ -48,18 +48,20 @@ import { AdminGuard } from './components/auth/AdminGuard';
 import { AdminScopeGuard } from './components/auth/AdminScopeGuard';
 
 function DashboardRoleRedirect() {
-  const { role } = useAuthStore();
-  return <Navigate to={getDefaultPathForRole(role)} replace />;
+  const { role, adminAccess } = useAuthStore();
+  const effectiveRole = role === 'admin' && !adminAccess ? 'contributor' : role;
+  return <Navigate to={getDefaultPathForRole(effectiveRole)} replace />;
 }
 
 function RoleScopedPageRedirect({ suffix }) {
-  const { role } = useAuthStore();
+  const { role, adminAccess } = useAuthStore();
+  const effectiveRole = role === 'admin' && !adminAccess ? 'contributor' : role;
 
-  if (role === 'initiator') {
+  if (effectiveRole === 'initiator') {
     return <Navigate to={`/dashboard/initiator/${suffix}`} replace />;
   }
 
-  if (role === 'admin') {
+  if (effectiveRole === 'admin') {
     if (suffix === 'messages') return <Navigate to="/admin/messages" replace />;
     if (suffix === 'wallet') return <Navigate to="/admin/payments" replace />;
     return <Navigate to="/admin" replace />;
