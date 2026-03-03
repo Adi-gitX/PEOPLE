@@ -11,7 +11,10 @@ export const createMission = async (req: Request, res: Response): Promise<void> 
             return;
         }
         const mission = await missionsService.createMission(uid, req.body);
-        sendCreated(res, { message: 'Mission created successfully', mission });
+        const message = mission.status === 'open'
+            ? 'Mission created and published successfully'
+            : 'Mission created as draft';
+        sendCreated(res, { message, mission });
     } catch (error) {
         console.error('Mission creation error:', error);
         sendError(res, 'Failed to create mission', 500);
@@ -49,12 +52,22 @@ export const getMyMissions = async (req: Request, res: Response): Promise<void> 
 
 export const getMissionById = async (req: Request, res: Response): Promise<void> => {
     try {
+        const viewerId = req.user?.uid;
         const { id } = req.params;
         const mission = await missionsService.getMissionById(id);
         if (!mission) {
             sendError(res, 'Mission not found', 404);
             return;
         }
+
+        const isOwner = Boolean(viewerId && mission.initiatorId === viewerId);
+        const isAdmin = req.userRole === 'admin';
+        const isPublicVisible = Boolean(mission.isPublic && mission.status !== 'draft');
+        if (!isPublicVisible && !isOwner && !isAdmin) {
+            sendError(res, 'Mission not found', 404);
+            return;
+        }
+
         const [milestones, assignments] = await Promise.all([
             missionsService.getMilestones(id),
             missionsService.getAssignments(id),
