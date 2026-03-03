@@ -32,6 +32,7 @@ export interface PublicSearchUser {
     skills: string[];
     location?: string;
     availability?: boolean;
+    hourlyRate?: number;
     verified: boolean;
     trustScore: number;
     matchPower: number;
@@ -44,6 +45,42 @@ interface SearchCandidate extends PublicSearchUser {
 }
 
 const normalize = (value: string | undefined): string => (value || '').trim().toLowerCase();
+
+const toNumberOrNull = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+};
+
+const extractContributorRate = (profile: ContributorProfile | null): number | null => {
+    if (!profile) return null;
+
+    const dynamicProfile = profile as unknown as Record<string, unknown>;
+    const directCandidates = [
+        dynamicProfile.hourlyRate,
+        dynamicProfile.expectedHourlyRate,
+        dynamicProfile.rate,
+        dynamicProfile.startingRate,
+    ];
+
+    for (const candidate of directCandidates) {
+        const parsed = toNumberOrNull(candidate);
+        if (parsed !== null) return parsed;
+    }
+
+    const rangeMin = toNumberOrNull(dynamicProfile.hourlyRateMin);
+    const rangeMax = toNumberOrNull(dynamicProfile.hourlyRateMax);
+    if (rangeMin !== null && rangeMax !== null) {
+        return Math.round((rangeMin + rangeMax) / 2);
+    }
+    if (rangeMin !== null) return rangeMin;
+    if (rangeMax !== null) return rangeMax;
+
+    return null;
+};
 
 const toIsoString = (value: unknown): string | null => {
     if (!value) return null;
@@ -119,6 +156,7 @@ export const searchUsers = async (options: SearchUsersOptions): Promise<{ users:
         const contributorSkillNames = (contributorProfile?.skills || [])
             .map((skill) => normalize(skill.skillName))
             .filter(Boolean);
+        const contributorRate = extractContributorRate(contributorProfile);
         const roleContext: 'contributor' | 'initiator' = roleFilter
             || (rolesAvailable.includes(user.primaryRole as 'contributor' | 'initiator')
                 ? user.primaryRole as 'contributor' | 'initiator'
@@ -168,6 +206,7 @@ export const searchUsers = async (options: SearchUsersOptions): Promise<{ users:
             availability: roleContext === 'contributor'
                 ? contributorView.availability
                 : true,
+            hourlyRate: contributorRate ?? undefined,
             verified: selectedView.verified,
             trustScore: selectedView.trustScore,
             matchPower: selectedView.matchPower,
@@ -189,6 +228,12 @@ export const searchUsers = async (options: SearchUsersOptions): Promise<{ users:
             continue;
         }
         if (typeof options.verified === 'boolean' && candidate.verified !== options.verified) continue;
+        if (options.minRate !== undefined || options.maxRate !== undefined) {
+            if (roleContext !== 'contributor') continue;
+            if (contributorRate === null) continue;
+            if (options.minRate !== undefined && contributorRate < options.minRate) continue;
+            if (options.maxRate !== undefined && contributorRate > options.maxRate) continue;
+        }
         if (locationFilter && !normalize(candidate.location).includes(locationFilter)) continue;
         if (skillsFilter.length > 0) {
             if (!resolvedContributor) continue;
@@ -236,6 +281,7 @@ export const searchUsers = async (options: SearchUsersOptions): Promise<{ users:
             skills: candidate.skills,
             location: candidate.location,
             availability: candidate.availability,
+            hourlyRate: candidate.hourlyRate,
             verified: candidate.verified,
             trustScore: candidate.trustScore,
             matchPower: candidate.matchPower,
