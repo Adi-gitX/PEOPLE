@@ -177,7 +177,7 @@ export default function ContributorDashboard() {
                                         </div>
                                     </div>
                                     <div className="ml-auto text-right">
-                                        <div className="text-2xl font-bold text-white tracking-tighter">~4h</div>
+                                        <div className="text-2xl font-bold text-white tracking-tighter">~2h</div>
                                         <div className="text-xs text-neutral-500 font-mono">EST. WAIT</div>
                                     </div>
                                 </div>
