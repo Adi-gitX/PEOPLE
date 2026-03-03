@@ -1,7 +1,23 @@
 import { auth } from './firebase';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+const fallbackApiUrl = import.meta.env.DEV ? 'http://localhost:5001' : '';
+const API_URL = (configuredApiUrl && configuredApiUrl.length > 0
+    ? configuredApiUrl
+    : fallbackApiUrl
+).replace(/\/+$/, '');
+const API_BASE_LABEL = API_URL || 'same-origin';
 export const AUTH_SESSION_INVALID_EVENT = 'people:auth-session-invalid';
+
+const resolveRequestUrl = (endpoint) => {
+    if (/^https?:\/\//i.test(endpoint)) return endpoint;
+
+    if (!API_URL) {
+        return endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    }
+
+    return endpoint.startsWith('/') ? `${API_URL}${endpoint}` : `${API_URL}/${endpoint}`;
+};
 
 const createAuthSessionError = (message, details = {}) => {
     const error = new Error(message);
@@ -39,11 +55,11 @@ const getAuthToken = async () => {
         const authError = createAuthSessionError('Failed to retrieve auth session token', {
             cause: error,
             endpoint: null,
-            apiBaseUrl: API_URL,
+            apiBaseUrl: API_BASE_LABEL,
         });
         dispatchAuthSessionInvalid({
             reason: 'token_retrieval_failed',
-            apiBaseUrl: API_URL,
+            apiBaseUrl: API_BASE_LABEL,
         });
         throw authError;
     }
@@ -52,7 +68,7 @@ const getAuthToken = async () => {
 
 const apiRequest = async (endpoint, options = {}) => {
     const token = await getAuthToken();
-    const requestUrl = `${API_URL}${endpoint}`;
+    const requestUrl = resolveRequestUrl(endpoint);
 
     const headers = {
         'Content-Type': 'application/json',
@@ -71,7 +87,7 @@ const apiRequest = async (endpoint, options = {}) => {
         });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown network error';
-        const networkError = new Error(`Network request failed for ${endpoint} (API: ${API_URL}): ${message}`);
+        const networkError = new Error(`Network request failed for ${endpoint} (API: ${API_BASE_LABEL}): ${message}`);
         networkError.name = 'NetworkError';
         networkError.cause = error;
         throw networkError;
@@ -87,14 +103,14 @@ const apiRequest = async (endpoint, options = {}) => {
                     {
                         status: 401,
                         endpoint,
-                        apiBaseUrl: API_URL,
+                        apiBaseUrl: API_BASE_LABEL,
                         url: requestUrl,
                     }
                 );
                 dispatchAuthSessionInvalid({
                     reason: 'http_401_non_json',
                     endpoint,
-                    apiBaseUrl: API_URL,
+                    apiBaseUrl: API_BASE_LABEL,
                 });
                 throw authError;
             }
@@ -112,7 +128,7 @@ const apiRequest = async (endpoint, options = {}) => {
                 {
                     status: 401,
                     endpoint,
-                    apiBaseUrl: API_URL,
+                    apiBaseUrl: API_BASE_LABEL,
                     url: requestUrl,
                     details: data.details,
                 }
@@ -120,7 +136,7 @@ const apiRequest = async (endpoint, options = {}) => {
             dispatchAuthSessionInvalid({
                 reason: 'http_401',
                 endpoint,
-                apiBaseUrl: API_URL,
+                apiBaseUrl: API_BASE_LABEL,
             });
             throw authError;
         }
@@ -129,7 +145,7 @@ const apiRequest = async (endpoint, options = {}) => {
         const error = new Error(`${baseMessage} (${endpoint})`);
         error.status = response.status;
         error.endpoint = endpoint;
-        error.apiBaseUrl = API_URL;
+        error.apiBaseUrl = API_BASE_LABEL;
         error.url = requestUrl;
         error.details = data.details; // Pass validation details through
         throw error;
