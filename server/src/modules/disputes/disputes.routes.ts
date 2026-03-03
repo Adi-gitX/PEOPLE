@@ -42,6 +42,19 @@ router.get('/my', requireAuth, async (req, res) => {
     }
 });
 
+// Admin: Get all disputes
+router.get('/admin/all', requireAuth, requireRole(['admin']), async (req, res) => {
+    try {
+        const status = req.query.status as string | undefined;
+        const limit = parseInt(req.query.limit as string) || 50;
+
+        const disputes = await disputesService.getAllDisputes(status, limit);
+        res.json({ disputes, count: disputes.length });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Get dispute by ID
 router.get('/:id', requireAuth, async (req, res) => {
     try {
@@ -108,19 +121,6 @@ router.post('/:id/escalate', requireAuth, async (req, res) => {
         res.json({ dispute });
     } catch (error: any) {
         res.status(400).json({ error: error.message });
-    }
-});
-
-// Admin: Get all disputes
-router.get('/admin/all', requireAuth, requireRole(['admin']), async (req, res) => {
-    try {
-        const status = req.query.status as string | undefined;
-        const limit = parseInt(req.query.limit as string) || 50;
-
-        const disputes = await disputesService.getAllDisputes(status, limit);
-        res.json({ disputes, count: disputes.length });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
     }
 });
 
