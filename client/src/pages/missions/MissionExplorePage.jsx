@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Button } from '../../components/ui/Button';
@@ -26,11 +26,18 @@ const COMPLEXITY_COLORS = {
 };
 
 export default function MissionExplorePage() {
+    const location = useLocation();
     const { isAuthenticated, role } = useAuthStore();
-    const useDashboardLayout = isAuthenticated && (role === 'contributor' || role === 'initiator');
+    const isDashboardRoute = location.pathname.startsWith('/dashboard/');
+    const scopedRole = location.pathname.startsWith('/dashboard/initiator')
+        ? 'initiator'
+        : location.pathname.startsWith('/dashboard/contributor')
+            ? 'contributor'
+            : role;
+    const useDashboardLayout = isDashboardRoute || (isAuthenticated && (scopedRole === 'contributor' || scopedRole === 'initiator'));
     const Layout = useDashboardLayout ? DashboardLayout : PublicLayout;
     const missionDetailsPathPrefix = useDashboardLayout
-        ? `/dashboard/${role}/missions`
+        ? `/dashboard/${scopedRole === 'initiator' ? 'initiator' : 'contributor'}/missions`
         : '/missions';
 
     const [filters, setFilters] = useState({
