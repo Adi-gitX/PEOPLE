@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Button } from '../../components/ui/Button';
@@ -16,11 +16,18 @@ import {
 export default function MissionDetailsPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { isAuthenticated, role } = useAuthStore();
-    const useDashboardLayout = isAuthenticated && (role === 'contributor' || role === 'initiator');
+    const isDashboardRoute = location.pathname.startsWith('/dashboard/');
+    const scopedRole = location.pathname.startsWith('/dashboard/initiator')
+        ? 'initiator'
+        : location.pathname.startsWith('/dashboard/contributor')
+            ? 'contributor'
+            : role;
+    const useDashboardLayout = isDashboardRoute || (isAuthenticated && (scopedRole === 'contributor' || scopedRole === 'initiator'));
     const Layout = useDashboardLayout ? DashboardLayout : PublicLayout;
     const backPath = useDashboardLayout
-        ? (role === 'contributor' ? '/dashboard/contributor/explore' : '/dashboard/initiator')
+        ? (scopedRole === 'contributor' ? '/dashboard/contributor/explore' : '/dashboard/initiator')
         : '/explore';
     const { data, loading, error } = useMission(id);
     const { skills: allSkills } = useSkills();
@@ -61,7 +68,7 @@ export default function MissionDetailsPage() {
             return;
         }
 
-        if (role !== 'contributor') {
+        if (scopedRole !== 'contributor') {
             toast.error('Only contributors can apply to missions');
             return;
         }
@@ -120,7 +127,7 @@ export default function MissionDetailsPage() {
                     Back
                 </Link>
 
-                {renderMissionContent(mission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, role, resolvedSkills)}
+                {renderMissionContent(mission, showApplyModal, setShowApplyModal, handleApply, applying, applicationData, setApplicationData, isAuthenticated, scopedRole, resolvedSkills)}
             </div>
         </Layout>
     );
