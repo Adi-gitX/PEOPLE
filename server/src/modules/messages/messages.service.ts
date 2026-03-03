@@ -15,6 +15,31 @@ export interface ConversationWithMeta extends Conversation {
     participantProfiles?: Record<string, ParticipantProfile>;
 }
 
+const toTimestampMs = (value: unknown): number => {
+    if (!value) return 0;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'object' && value !== null && 'toDate' in value && typeof (value as { toDate: () => Date }).toDate === 'function') {
+        return (value as { toDate: () => Date }).toDate().getTime();
+    }
+    if (typeof value === 'string') {
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+    }
+    return 0;
+};
+
+const isFirestoreIndexError = (error: unknown): boolean => {
+    if (!(error instanceof Error)) return false;
+    const lower = error.message.toLowerCase();
+    const code = (error as { code?: unknown }).code;
+    return (
+        code === 9
+        || code === 'failed-precondition'
+        || lower.includes('requires an index')
+        || lower.includes('failed precondition')
+    );
+};
+
 export const createConversation = async (
     data: Omit<Conversation, 'id' | 'createdAt'>
 ): Promise<Conversation> => {
@@ -111,16 +136,35 @@ const getConversationPreview = async (
 };
 
 export const getUserConversations = async (userId: string): Promise<ConversationWithMeta[]> => {
-    const snapshot = await db
-        .collection(CONVERSATIONS_COLLECTION)
-        .where('participants', 'array-contains', userId)
-        .orderBy('lastMessageAt', 'desc')
-        .limit(50)
-        .get();
+    let conversations: Conversation[];
 
-    const conversations = snapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as Conversation)
-    );
+    try {
+        const snapshot = await db
+            .collection(CONVERSATIONS_COLLECTION)
+            .where('participants', 'array-contains', userId)
+            .orderBy('lastMessageAt', 'desc')
+            .limit(50)
+            .get();
+
+        conversations = snapshot.docs.map(
+            (doc) => ({ id: doc.id, ...doc.data() } as Conversation)
+        );
+    } catch (error) {
+        if (!isFirestoreIndexError(error)) {
+            throw error;
+        }
+
+        const fallbackSnapshot = await db
+            .collection(CONVERSATIONS_COLLECTION)
+            .where('participants', 'array-contains', userId)
+            .limit(100)
+            .get();
+
+        conversations = fallbackSnapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() } as Conversation))
+            .sort((a, b) => toTimestampMs(b.lastMessageAt) - toTimestampMs(a.lastMessageAt))
+            .slice(0, 50);
+    }
 
     const allParticipantIds = conversations.flatMap((conversation) => conversation.participants);
     const participantProfiles = await getParticipantProfiles(allParticipantIds);
