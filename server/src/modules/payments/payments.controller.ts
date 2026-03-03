@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import * as paymentsService from './payments.service.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
+import { db } from '../../config/firebase.js';
+import type { Mission } from '../../types/firestore.js';
+
+const MISSIONS_COLLECTION = 'missions';
 
 export const createCheckout = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -63,7 +67,26 @@ export const getMyPaymentHistory = async (req: Request, res: Response): Promise<
 
 export const getMissionPayments = async (req: Request, res: Response): Promise<void> => {
     try {
+        const uid = req.user?.uid;
+        if (!uid) {
+            sendError(res, 'User ID not found', 401);
+            return;
+        }
+
+        const role = req.userRole;
         const { missionId } = req.params;
+        const missionDoc = await db.collection(MISSIONS_COLLECTION).doc(missionId).get();
+        if (!missionDoc.exists) {
+            sendError(res, 'Mission not found', 404);
+            return;
+        }
+
+        const mission = missionDoc.data() as Mission;
+        if (role !== 'admin' && mission.initiatorId !== uid) {
+            sendError(res, 'Not authorized', 403);
+            return;
+        }
+
         const payments = await paymentsService.getMissionPayments(missionId);
         sendSuccess(res, { payments });
     } catch {
