@@ -24,6 +24,7 @@ export const createMission = async (
     data: CreateMission
 ): Promise<Mission> => {
     const now = new Date();
+    const shouldPublishNow = data.publishMode !== 'draft';
 
     // Get initiator name
     const userDoc = await db.collection(USERS_COLLECTION).doc(initiatorId).get();
@@ -45,7 +46,7 @@ export const createMission = async (
         maxLeadContributors: 1,
         maxShadowContributors: 1,
         requiresCoreReviewer: true,
-        status: 'draft',
+        status: shouldPublishNow ? 'open' : 'draft',
         isPublic: data.isPublic ?? true,
         featured: false,
         requiredSkills: data.requiredSkills || [],
@@ -56,6 +57,10 @@ export const createMission = async (
     // Only add deadline if it exists (Firestore doesn't accept undefined)
     if (data.deadline) {
         (mission as any).deadline = new Date(data.deadline);
+    }
+
+    if (shouldPublishNow) {
+        (mission as any).publishedAt = now;
     }
 
     const docRef = await db.collection(MISSIONS_COLLECTION).add(mission);
