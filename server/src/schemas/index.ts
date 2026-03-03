@@ -111,6 +111,7 @@ export const createMissionSchema = z.object({
     deadline: z.string().datetime().optional(),
     requiredSkills: z.array(z.string()).default([]),
     isPublic: z.boolean().default(true),
+    publishMode: z.enum(['publish_now', 'draft']).default('publish_now'),
 }).refine((data) => data.budgetMax >= data.budgetMin, {
     message: 'Maximum budget must be greater than or equal to minimum budget',
     path: ['budgetMax'],
