@@ -3,14 +3,45 @@ import { env } from '../config/env.js';
 
 const FRONTEND_URL = env.FRONTEND_URL.split(',').map((item) => item.trim()).filter(Boolean)[0] || 'http://localhost:5173';
 const NODE_ENV = env.NODE_ENV || 'development';
+const POSTMARK_SMTP_HOST = 'smtp.postmarkapp.com';
+
+interface ResolvedSmtpConfig {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    pass: string;
+    provider: 'postmark' | 'smtp';
+}
+
+const resolveSmtpConfig = (): ResolvedSmtpConfig | null => {
+    if (env.POSTMARK_SERVER_TOKEN) {
+        return {
+            host: env.SMTP_HOST || POSTMARK_SMTP_HOST,
+            port: env.SMTP_PORT || 587,
+            secure: env.SMTP_SECURE ?? false,
+            user: env.SMTP_USER || env.POSTMARK_SERVER_TOKEN,
+            pass: env.SMTP_PASS || env.POSTMARK_SERVER_TOKEN,
+            provider: 'postmark',
+        };
+    }
+
+    if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS) {
+        return null;
+    }
+
+    return {
+        host: env.SMTP_HOST,
+        port: env.SMTP_PORT,
+        secure: env.SMTP_SECURE,
+        user: env.SMTP_USER,
+        pass: env.SMTP_PASS,
+        provider: 'smtp',
+    };
+};
 
 const hasSmtpConfig = (): boolean => {
-    return Boolean(
-        env.SMTP_HOST
-        && env.SMTP_USER
-        && env.SMTP_PASS
-        && env.SMTP_FROM_EMAIL
-    );
+    return Boolean(resolveSmtpConfig() && env.SMTP_FROM_EMAIL);
 };
 
 const smtpFrom = (): string => {
@@ -24,6 +55,8 @@ let cachedTransporter: nodemailer.Transporter | null = null;
 let missingSmtpWarned = false;
 
 const getTransporter = (): nodemailer.Transporter | null => {
+    const smtpConfig = resolveSmtpConfig();
+
     if (!hasSmtpConfig()) {
         return null;
     }
@@ -32,16 +65,20 @@ const getTransporter = (): nodemailer.Transporter | null => {
         return cachedTransporter;
     }
 
+    if (!smtpConfig) {
+        return null;
+    }
+
     cachedTransporter = nodemailer.createTransport({
-        host: env.SMTP_HOST,
-        port: env.SMTP_PORT,
-        secure: env.SMTP_SECURE,
+        host: smtpConfig.host,
+        port: smtpConfig.port,
+        secure: smtpConfig.secure,
         pool: true,
         maxConnections: 5,
         maxMessages: 200,
         auth: {
-            user: env.SMTP_USER,
-            pass: env.SMTP_PASS,
+            user: smtpConfig.user,
+            pass: smtpConfig.pass,
         },
     });
 
@@ -58,6 +95,7 @@ export interface SendResult {
 interface SendEmailOptions {
     text?: string;
     replyTo?: string;
+    tag?: string;
 }
 
 const stripHtml = (value: string): string => {
@@ -117,6 +155,7 @@ export const isSupportEmailConfigured = (): boolean => {
 
 export const verifySmtpTransport = async (): Promise<{ ok: boolean; detail: string }> => {
     const transporter = getTransporter();
+    const smtpConfig = resolveSmtpConfig();
 
     if (!transporter) {
         return {
@@ -129,7 +168,7 @@ export const verifySmtpTransport = async (): Promise<{ ok: boolean; detail: stri
         await transporter.verify();
         return {
             ok: true,
-            detail: `SMTP ${env.SMTP_HOST}:${env.SMTP_PORT} verified`,
+            detail: `SMTP ${smtpConfig?.host || 'unknown'}:${smtpConfig?.port || 'unknown'} verified`,
         };
     } catch (error) {
         return {
@@ -174,6 +213,7 @@ export const sendEmail = async (
             html,
             text: options.text || stripHtml(html),
             replyTo: options.replyTo || env.SUPPORT_REPLY_TO || undefined,
+            headers: options.tag ? { 'X-PM-Tag': options.tag } : undefined,
         });
 
         return {
@@ -193,20 +233,32 @@ export const sendEmail = async (
 export const sendOtpEmail = async (email: string, otp: string): Promise<SendResult> => {
     const content = `
         <h2 style="margin: 0 0 12px; color: #ffffff; font-size: 24px; font-weight: 600; text-align: center;">
-          Your Verification Code
+          Your PEOPLE Sign-In Code
         </h2>
         <p style="margin: 0 0 20px; color: #a1a1aa; font-size: 15px; line-height: 1.6; text-align: center;">
-          Enter this code to sign in:
+          Use this one-time code to securely continue your sign-in:
         </p>
         <div style="text-align: center; margin-bottom: 20px;">
           <span style="display: inline-block; padding: 14px 28px; background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; color: #ffffff; font-size: 28px; letter-spacing: 8px; font-family: monospace;">
             ${otp}
           </span>
         </div>
-        <p style="margin: 0; color: #71717a; font-size: 13px; text-align: center;">Code expires in 10 minutes.</p>
+        <p style="margin: 0 0 8px; color: #71717a; font-size: 13px; text-align: center;">Code expires in 10 minutes.</p>
+        <p style="margin: 0; color: #71717a; font-size: 12px; text-align: center;">
+          If you did not request this code, you can safely ignore this email.
+        </p>
     `;
 
-    return sendEmail(email, 'Your PEOPLE verification code', createEmailTemplate(content));
+    return sendEmail(
+        email,
+        'Your PEOPLE verification code (10 min)',
+        createEmailTemplate(content),
+        {
+            text: `Your PEOPLE verification code is ${otp}. It expires in 10 minutes.`,
+            replyTo: env.AUTH_EMAIL_REPLY_TO || env.SUPPORT_REPLY_TO || undefined,
+            tag: 'auth-otp',
+        }
+    );
 };
 
 export const sendWelcomeEmail = async (email: string, name: string): Promise<boolean> => {
