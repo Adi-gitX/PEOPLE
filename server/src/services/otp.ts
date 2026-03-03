@@ -37,6 +37,21 @@ const hashOptional = (value?: string): string | null => {
 
 const generateOtp = (): string => Math.floor(100000 + Math.random() * 900000).toString();
 
+const maskRecipientForLog = (email: string): string => {
+    const normalized = normalizeEmail(email);
+    const [localPart, domain = 'unknown'] = normalized.split('@');
+    if (!localPart) {
+        return `***@${domain}`;
+    }
+    const visible = localPart.slice(0, Math.min(2, localPart.length));
+    return `${visible}***@${domain}`;
+};
+
+const serializeLogError = (error: unknown): string => {
+    if (error instanceof Error) return error.message;
+    return String(error);
+};
+
 export const createOtp = async (
     email: string,
     context: OtpContext
@@ -69,14 +84,24 @@ export const createOtp = async (
 
         const emailResult = await sendOtpEmail(normalizedEmail, otp);
         if (!emailResult.success) {
+            console.warn(
+                `[OTP][SEND][FAIL] mode=${context.mode} recipient=${maskRecipientForLog(normalizedEmail)} provider=${emailResult.provider || 'unknown'} reason=${emailResult.error || 'send_failed'}`
+            );
             return { success: false, message: 'Failed to send verification code' };
         }
+
+        console.info(
+            `[OTP][SEND][OK] mode=${context.mode} recipient=${maskRecipientForLog(normalizedEmail)} provider=${emailResult.provider || 'unknown'} expiresInSeconds=${OTP_EXPIRY_MINUTES * 60}`
+        );
 
         return {
             success: true,
             expiresInSeconds: OTP_EXPIRY_MINUTES * 60,
         };
-    } catch {
+    } catch (error) {
+        console.error(
+            `[OTP][SEND][ERROR] mode=${context.mode} recipient=${maskRecipientForLog(email)} reason=${serializeLogError(error)}`
+        );
         return { success: false, message: 'Failed to send verification code' };
     }
 };
