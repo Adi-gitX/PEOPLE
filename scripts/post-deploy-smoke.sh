@@ -41,30 +41,18 @@ check_status() {
   echo "==> ${label}"
 
   local status
-  if [[ "$method" == "POST" ]]; then
-    if [[ "$auth" == "true" && -n "$AUTH_TOKEN" ]]; then
-      status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer ${AUTH_TOKEN}" \
-        -d "$body" "${url}")
-    elif [[ "$auth" == "true" ]]; then
-      status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
-        -H "Content-Type: application/json" \
-        -d "$body" "${url}")
-    else
-      status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
-        -H "Content-Type: application/json" \
-        -d "$body" "${url}")
-    fi
-  else
-    if [[ "$auth" == "true" && -n "$AUTH_TOKEN" ]]; then
-      status=$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${AUTH_TOKEN}" "${url}")
-    elif [[ "$auth" == "true" ]]; then
-      status=$(curl -sS -o /dev/null -w "%{http_code}" "${url}")
-    else
-      status=$(curl -sS -o /dev/null -w "%{http_code}" "${url}")
-    fi
+  local -a curl_args
+  curl_args=(-sS -o /dev/null -w "%{http_code}" -X "$method")
+
+  if [[ "$auth" == "true" && -n "$AUTH_TOKEN" ]]; then
+    curl_args+=(-H "Authorization: Bearer ${AUTH_TOKEN}")
   fi
+
+  if [[ -n "$body" ]]; then
+    curl_args+=(-H "Content-Type: application/json" -d "$body")
+  fi
+
+  status=$(curl "${curl_args[@]}" "${url}")
 
   IFS=',' read -r -a expected <<< "$expected_csv"
   for code in "${expected[@]}"; do
