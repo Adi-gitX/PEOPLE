@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as missionsController from './missions.controller.js';
-import { requireAuth, optionalAuth } from '../../middleware/auth.js';
+import { requireAuth, optionalAuth, requireRole } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import {
     createMissionSchema,
@@ -27,7 +27,7 @@ router.get('/', optionalAuth, missionsController.getMissions);
  * @desc    Get current user's missions
  * @access  Private
  */
-router.get('/my', requireAuth, missionsController.getMyMissions);
+router.get('/my', requireAuth, requireRole(['initiator', 'admin']), missionsController.getMyMissions);
 
 /**
  * @route   POST /api/v1/missions
@@ -37,6 +37,7 @@ router.get('/my', requireAuth, missionsController.getMyMissions);
 router.post(
     '/',
     requireAuth,
+    requireRole(['initiator', 'admin']),
     validate(createMissionSchema),
     missionsController.createMission
 );
@@ -56,6 +57,7 @@ router.get('/:id', optionalAuth, missionsController.getMissionById);
 router.patch(
     '/:id',
     requireAuth,
+    requireRole(['initiator', 'admin']),
     validate(updateMissionSchema),
     missionsController.updateMission
 );
@@ -65,14 +67,14 @@ router.patch(
  * @desc    Publish mission
  * @access  Private (Owner only)
  */
-router.post('/:id/publish', requireAuth, missionsController.publishMission);
+router.post('/:id/publish', requireAuth, requireRole(['initiator', 'admin']), missionsController.publishMission);
 
 /**
  * @route   DELETE /api/v1/missions/:id
  * @desc    Cancel mission
  * @access  Private (Owner only)
  */
-router.delete('/:id', requireAuth, missionsController.deleteMission);
+router.delete('/:id', requireAuth, requireRole(['initiator', 'admin']), missionsController.deleteMission);
 
 // ─── Milestones ───
 
@@ -81,7 +83,7 @@ router.delete('/:id', requireAuth, missionsController.deleteMission);
  * @desc    Get milestones for mission
  * @access  Private
  */
-router.get('/:id/milestones', requireAuth, missionsController.getMilestones);
+router.get('/:id/milestones', requireAuth, requireRole(['initiator', 'admin']), missionsController.getMilestones);
 
 /**
  * @route   POST /api/v1/missions/:id/milestones
@@ -91,6 +93,7 @@ router.get('/:id/milestones', requireAuth, missionsController.getMilestones);
 router.post(
     '/:id/milestones',
     requireAuth,
+    requireRole(['initiator', 'admin']),
     validate(createMilestoneSchema),
     missionsController.addMilestone
 );
