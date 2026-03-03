@@ -67,10 +67,15 @@ export default function NewMissionPage() {
             const response = await api.post('/api/v1/missions', {
                 ...formData,
                 description: formData.description || formData.problemStatement,
+                publishMode: asDraft ? 'draft' : 'publish_now',
             });
 
-            toast.success(asDraft ? 'Mission saved as draft!' : 'Mission created!');
-            navigate(`/missions/${response.data.mission.id}`);
+            toast.success(asDraft ? 'Mission saved as draft' : 'Mission created and published');
+            if (asDraft) {
+                navigate('/dashboard/initiator');
+            } else {
+                navigate(`/dashboard/initiator/missions/${response.data.mission.id}`);
+            }
         } catch (error) {
             console.error('Create mission error:', error);
             // Show validation details if available
