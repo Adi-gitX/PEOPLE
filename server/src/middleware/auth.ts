@@ -110,6 +110,7 @@ export const requireRole = (roles: string[]) => {
             for (const role of requestedProfileRoles) {
                 try {
                     if (await hasRoleProfile(req.user.uid, role)) {
+                        req.userRole = role;
                         next();
                         return;
                     }
