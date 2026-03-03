@@ -30,6 +30,20 @@ check() {
   echo "    ok"
 }
 
+check_json() {
+  local label="$1"
+  local url="$2"
+
+  echo "==> ${label}"
+  local headers
+  headers=$(curl -sS -I "${url}")
+  if ! printf "%s" "$headers" | grep -qi '^content-type: application/json'; then
+    echo "    failed (expected application/json response)"
+    exit 1
+  fi
+  echo "    ok"
+}
+
 check_status() {
   local label="$1"
   local url="$2"
@@ -75,8 +89,25 @@ check "Public user search" "${BASE_URL}/api/v1/search/users?role=contributor&lim
 
 if [[ -n "$CLIENT_BASE_URL" ]]; then
   CLIENT_BASE_URL="${CLIENT_BASE_URL%/}"
+  check_json "Frontend /api proxy health" "${CLIENT_BASE_URL}/api/health"
+  check_status \
+    "Frontend-origin OTP proxy route (validation path)" \
+    "${CLIENT_BASE_URL}/api/v1/auth/otp/send" \
+    "200,400" \
+    "POST" \
+    '{"email":"invalid-email","mode":"signup"}'
+  check "Frontend login route refresh" "${CLIENT_BASE_URL}/login"
+  check "Frontend signup route refresh" "${CLIENT_BASE_URL}/signup"
   check "Public FAQ page" "${CLIENT_BASE_URL}/faq"
 else
+  echo "==> Frontend /api proxy health"
+  echo "    skipped (set CLIENT_BASE_URL to verify client proxy routes)"
+  echo "==> Frontend-origin OTP proxy route (validation path)"
+  echo "    skipped (set CLIENT_BASE_URL to verify client proxy routes)"
+  echo "==> Frontend login route refresh"
+  echo "    skipped (set CLIENT_BASE_URL to verify SPA route refresh behavior)"
+  echo "==> Frontend signup route refresh"
+  echo "    skipped (set CLIENT_BASE_URL to verify SPA route refresh behavior)"
   echo "==> Public FAQ page"
   echo "    skipped (set CLIENT_BASE_URL to verify client routes)"
 fi
