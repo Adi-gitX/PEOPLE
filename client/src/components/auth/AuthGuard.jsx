@@ -1,13 +1,16 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getDefaultPathForRole } from '../../lib/roleRouting';
 import { useRoleCapabilities } from '../../hooks/useApi';
 
 export const AuthGuard = ({ children, requireRole = null }) => {
-    const { isAuthenticated, isLoading, role, user, refreshProfile } = useAuthStore();
+    const { isAuthenticated, isLoading, role, user, refreshProfile, switchActiveRole } = useAuthStore();
     const location = useLocation();
     const [isChecking, setIsChecking] = useState(true);
+    const [isSyncingRole, setIsSyncingRole] = useState(false);
+    const [roleSyncFailed, setRoleSyncFailed] = useState(false);
+    const roleSyncAttemptRef = useRef('');
     const { data: capabilityData, loading: capabilityLoading } = useRoleCapabilities({
         immediate: Boolean(isAuthenticated && !isLoading),
         deps: [user?.uid, role, requireRole],
@@ -31,7 +34,52 @@ export const AuthGuard = ({ children, requireRole = null }) => {
         }
     }, [isAuthenticated, role, isLoading, refreshProfile]);
 
-    if (isLoading || isChecking) {
+    useEffect(() => {
+        const syncRequiredRole = async () => {
+            if (!isAuthenticated || isLoading || !requireRole) return;
+            if (requireRole === 'admin') return;
+            if (role === requireRole) {
+                setRoleSyncFailed(false);
+                setIsSyncingRole(false);
+                return;
+            }
+            if (capabilityLoading) return;
+
+            const availableRoles = Array.isArray(capabilityData?.availableRoles) && capabilityData.availableRoles.length > 0
+                ? capabilityData.availableRoles
+                : role
+                    ? [role]
+                    : [];
+            if (!availableRoles.includes(requireRole)) return;
+
+            const syncKey = `${user?.uid || 'unknown'}:${role || 'none'}:${requireRole}`;
+            if (roleSyncAttemptRef.current === syncKey) return;
+            roleSyncAttemptRef.current = syncKey;
+
+            setIsSyncingRole(true);
+            setRoleSyncFailed(false);
+            try {
+                await switchActiveRole(requireRole);
+            } catch {
+                setRoleSyncFailed(true);
+            } finally {
+                setIsSyncingRole(false);
+            }
+        };
+
+        syncRequiredRole();
+    }, [
+        isAuthenticated,
+        isLoading,
+        requireRole,
+        role,
+        capabilityLoading,
+        capabilityData?.availableRoles,
+        switchActiveRole,
+        user?.uid,
+    ]);
+
+    if (isLoading || isChecking || isSyncingRole) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-black">
                 <div className="flex flex-col items-center gap-4">
@@ -54,6 +102,8 @@ export const AuthGuard = ({ children, requireRole = null }) => {
     const hasRequiredRoleCapability = requireRole ? availableRoles.includes(requireRole) : true;
     const requiresCapabilityResolution = Boolean(
         requireRole &&
+        !isSyncingRole &&
+        !roleSyncFailed &&
         (role !== requireRole || !role) &&
         capabilityLoading
     );
@@ -71,7 +121,19 @@ export const AuthGuard = ({ children, requireRole = null }) => {
 
     if (requireRole && role !== requireRole) {
         if (hasRequiredRoleCapability) {
-            return children;
+            if (roleSyncFailed) {
+                const redirectPath = getDefaultPathForRole(role);
+                return <Navigate to={redirectPath} replace />;
+            }
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-black">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
+                        <p className="text-zinc-500 text-sm">Switching workspace...</p>
+                    </div>
+                </div>
+            );
         }
 
         if (!role) {
