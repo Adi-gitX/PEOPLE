@@ -20,6 +20,9 @@ export default function MissionApplicationsPage() {
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(null);
+    const [matchPayload, setMatchPayload] = useState(null);
+    const [matchLoading, setMatchLoading] = useState(false);
+    const [matchRunning, setMatchRunning] = useState(false);
 
     const fetchData = useCallback(async () => {
         try {
@@ -40,6 +43,23 @@ export default function MissionApplicationsPage() {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const fetchMatchingResults = useCallback(async () => {
+        setMatchLoading(true);
+        try {
+            const response = await api.get(`/api/v1/matching/missions/${missionId}/results`);
+            const payload = response.data || response;
+            setMatchPayload(payload);
+        } catch {
+            setMatchPayload(null);
+        } finally {
+            setMatchLoading(false);
+        }
+    }, [missionId]);
+
+    useEffect(() => {
+        fetchMatchingResults();
+    }, [fetchMatchingResults]);
 
     const handleStatusUpdate = async (applicationId, status) => {
         setProcessing(applicationId);
@@ -75,6 +95,23 @@ export default function MissionApplicationsPage() {
             toast.error('Failed to accept and assign contributor');
         } finally {
             setProcessing(null);
+        }
+    };
+
+    const handleRunMatching = async () => {
+        setMatchRunning(true);
+        try {
+            const response = await api.post(`/api/v1/matching/missions/${missionId}/run`, {
+                limit: 10,
+                minimumScore: 30,
+            });
+            const payload = response.data || response;
+            setMatchPayload(payload);
+            toast.success('Matching refreshed');
+        } catch (error) {
+            toast.error(error.message || 'Failed to refresh matches');
+        } finally {
+            setMatchRunning(false);
         }
     };
 
@@ -118,6 +155,61 @@ export default function MissionApplicationsPage() {
                             <span className="text-neutral-400">for</span>
                             <span className="text-white font-medium">{mission.title}</span>
                         </div>
+                    )}
+                </div>
+
+                <div className="mb-8 rounded-xl border border-white/[0.08] bg-[#0A0A0A] p-5">
+                    <div className="flex items-center justify-between gap-3 mb-4">
+                        <div>
+                            <h2 className="text-lg font-semibold text-white tracking-tight">AI Best Matches</h2>
+                            <p className="text-xs text-neutral-500">
+                                Ranked by mission fit score and refreshed every 2 hours.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleRunMatching}
+                            disabled={matchRunning}
+                            className="px-3 py-2 text-xs rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-60"
+                        >
+                            {matchRunning ? 'Refreshing...' : 'Refresh Matches'}
+                        </button>
+                    </div>
+
+                    {matchLoading ? (
+                        <p className="text-sm text-zinc-500">Loading ranked contributors...</p>
+                    ) : !matchPayload?.matches?.length ? (
+                        <p className="text-sm text-zinc-500">No ranked matches available yet.</p>
+                    ) : (
+                        <>
+                            <div className="grid gap-3 md:grid-cols-2">
+                                {matchPayload.matches.slice(0, 6).map((match) => (
+                                    <div key={match.contributorId} className="rounded-lg border border-white/10 bg-black/40 p-3">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-sm font-medium text-white truncate">{match.contributorName || match.contributorId}</p>
+                                            <span className="text-xs font-mono text-green-400">{match.overallScore}%</span>
+                                        </div>
+                                        <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                            <div
+                                                className="h-full bg-green-500"
+                                                style={{ width: `${Math.min(100, Math.max(0, match.overallScore || 0))}%` }}
+                                            />
+                                        </div>
+                                        <div className="mt-2 text-[11px] text-zinc-500">
+                                            Skills {match.skillScore}% · Trust {match.trustScore}% · Availability {match.availabilityScore}%
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-3 text-[11px] text-zinc-500">
+                                {matchPayload.computedAt && (
+                                    <span>Computed: {new Date(matchPayload.computedAt).toLocaleString()} · </span>
+                                )}
+                                {matchPayload.expiresAt && (
+                                    <span>Refresh by: {new Date(matchPayload.expiresAt).toLocaleString()}</span>
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
 
